@@ -8,6 +8,7 @@ version = "0.5.1"
 license = "Apache-2.0/MIT"
 keywords = ["math", "random"]
 authors = ["The Noise-rs Developers."]
+autoexamples = false
 
 [lib]
 name = "noise"
@@ -146,9 +147,9 @@ required-features = ["image"]
 name = "hybridmulti"
 required-features = ["image"]
 
-[[example]]
-name = "cache"
-required-features = ["image"]
+# [[example]]
+# name = "cache"
+# required-features = ["image"]
 
 [[example]]
 name = "worley"
@@ -190,6 +191,6 @@ required-features = ["image"]
 name = "textureslime"
 required-features = ["image"]
 
-[[example]]
-name = "complexplanet"
-required-features = ["image"]
+# [[example]]
+# name = "complexplanet"
+# required-features = ["image"]
