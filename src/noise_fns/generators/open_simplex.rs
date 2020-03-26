@@ -98,18 +98,18 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
         let skewed_floor = math::map2(stretched_floor, |v| v + squish_offset);
 
         // Compute grid coordinates relative to rhombus origin.
-        let rel_coords = math::sub2(stretched, stretched_floor);
+        let relative_coordinates = math::sub2(stretched, stretched_floor);
 
         // Sum those together to get a value that determines which region we're in.
-        let region_sum = math::fold2(rel_coords, Add::add);
+        let region_sum = math::fold2(relative_coordinates, Add::add);
 
         // Positions relative to origin point (0, 0).
-        let pos0 = math::sub2(point, skewed_floor);
+        let origin_relative_position = math::sub2(point, skewed_floor);
 
         let mut value = zero;
 
         let mut vertex;
-        let mut dpos;
+        let mut position_delta;
 
         let t0 = squish_constant;
         let t1 = squish_constant + one;
@@ -119,13 +119,13 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
 
         // Contribution (1, 0)
         vertex = math::add2(stretched_floor, [one, zero]);
-        dpos = math::sub2(pos0, [t1, t0]);
-        value = value + gradient(&self.perm_table, vertex, dpos);
+        position_delta = math::sub2(origin_relative_position, [t1, t0]);
+        value += gradient(&self.perm_table, vertex, position_delta);
 
         // Contribution (0, 1)
         vertex = math::add2(stretched_floor, [zero, one]);
-        dpos = math::sub2(pos0, [t0, t1]);
-        value = value + gradient(&self.perm_table, vertex, dpos);
+        position_delta = math::sub2(origin_relative_position, [t0, t1]);
+        value += gradient(&self.perm_table, vertex, position_delta);
 
         //              ( 0,  2)
         //                  |   \
@@ -141,8 +141,8 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
         //                          \    |
         //                           ( 1, -1)
 
-        let ext_vertex;
-        let ext_dpos;
+        let extra_vertex;
+        let extra_position_delta;
 
         // See the graph for an intuitive explanation; the sum of `x` and `y` is
         // only greater than `1` if we're in Region B.
@@ -150,28 +150,28 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
             // In region A
             // Contribution (0, 0)
             vertex = math::add2(stretched_floor, [zero, zero]);
-            dpos = math::sub2(pos0, [zero, zero]);
+            position_delta = math::sub2(origin_relative_position, [zero, zero]);
 
             // Surflet radius is larger than one simplex, add contribution from extra vertex
             let center_dist = one - region_sum;
             // If closer to either edge that doesn't border region B
-            if center_dist > rel_coords[0] || center_dist > rel_coords[1] {
-                if rel_coords[0] > rel_coords[1] {
+            if center_dist > relative_coordinates[0] || center_dist > relative_coordinates[1] {
+                if relative_coordinates[0] > relative_coordinates[1] {
                     // Nearest contributing surflets are from region D
                     // Contribution (1, -1)
-                    ext_vertex = math::add2(stretched_floor, [one, -one]);
-                    ext_dpos = math::sub2(pos0, [one, -one]);
+                    extra_vertex = math::add2(stretched_floor, [one, -one]);
+                    extra_position_delta = math::sub2(origin_relative_position, [one, -one]);
                 } else {
                     // Nearest contributing surflets are from region E
                     // Contribution (-1, 1)
-                    ext_vertex = math::add2(stretched_floor, [-one, one]);
-                    ext_dpos = math::sub2(pos0, [-one, one]);
+                    extra_vertex = math::add2(stretched_floor, [-one, one]);
+                    extra_position_delta = math::sub2(origin_relative_position, [-one, one]);
                 }
             } else {
                 // Nearest contributing surflets are from region B
                 // Contribution (1, 1)
-                ext_vertex = math::add2(stretched_floor, [one, one]);
-                ext_dpos = math::sub2(pos0, [t2, t2]);
+                extra_vertex = math::add2(stretched_floor, [one, one]);
+                extra_position_delta = math::sub2(origin_relative_position, [t2, t2]);
             }
         } else {
             // In region B
@@ -179,36 +179,36 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
             vertex = math::add2(stretched_floor, [one, one]);
             // We are moving across the diagonal `/`, so we'll need to add by the
             // squish constant
-            dpos = math::sub2(pos0, [t2, t2]);
+            position_delta = math::sub2(origin_relative_position, [t2, t2]);
 
             // Surflet radius is larger than one simplex, add contribution from extra vertex
             let center_dist = two - region_sum;
             // If closer to either edge that doesn't border region A
-            if center_dist < rel_coords[0] || center_dist < rel_coords[1] {
-                if rel_coords[0] > rel_coords[1] {
+            if center_dist < relative_coordinates[0] || center_dist < relative_coordinates[1] {
+                if relative_coordinates[0] > relative_coordinates[1] {
                     // Nearest contributing surflets are from region C
                     // Contribution (2, 0)
-                    ext_vertex = math::add2(stretched_floor, [two, zero]);
-                    ext_dpos = math::sub2(pos0, [t4, t3]);
+                    extra_vertex = math::add2(stretched_floor, [two, zero]);
+                    extra_position_delta = math::sub2(origin_relative_position, [t4, t3]);
                 } else {
                     // Nearest contributing surflets are from region F
                     // Contribution (0, 2)
-                    ext_vertex = math::add2(stretched_floor, [zero, two]);
-                    ext_dpos = math::sub2(pos0, [t3, t4]);
+                    extra_vertex = math::add2(stretched_floor, [zero, two]);
+                    extra_position_delta = math::sub2(origin_relative_position, [t3, t4]);
                 }
             } else {
                 // Nearest contributing surflets are from region A
                 // Contribution (0, 0)
-                ext_vertex = math::add2(stretched_floor, [zero, zero]);
-                ext_dpos = math::sub2(pos0, [zero, zero]);
+                extra_vertex = math::add2(stretched_floor, [zero, zero]);
+                extra_position_delta = math::sub2(origin_relative_position, [zero, zero]);
             }
         }
 
         // Point (0, 0) or (1, 1)
-        value = value + gradient(&self.perm_table, vertex, dpos);
+        value += gradient(&self.perm_table, vertex, position_delta);
 
         // Neighboring simplex point
-        value = value + gradient(&self.perm_table, ext_vertex, ext_dpos);
+        value += gradient(&self.perm_table, extra_vertex, extra_position_delta);
 
         value * Self::NORM_CONSTANT_2D
     }
@@ -217,6 +217,7 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
 /// 3-dimensional [`OpenSimplex` Noise](http://uniblock.tumblr.com/post/97868843242/noise)
 ///
 /// This is a slower but higher quality form of gradient noise than `Perlin` 3D.
+#[allow(clippy::cognitive_complexity)]
 impl NoiseFn<[f64; 3]> for OpenSimplex {
     fn get(&self, point: [f64; 3]) -> f64 {
         fn gradient(perm_table: &PermutationTable, vertex: [f64; 3], position: [f64; 3]) -> f64 {
@@ -251,23 +252,23 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
         let skewed_floor = math::map3(stretched_floor, |v| v + squish_offset);
 
         // Compute simplectic honeycomb coordinates relative to rhombohedral origin.
-        let rel_coords = math::sub3(stretched, stretched_floor);
+        let relative_coordinates = math::sub3(stretched, stretched_floor);
 
         // Sum those together to get a value that determines which region we're in.
-        let region_sum = math::fold3(rel_coords, Add::add);
+        let region_sum = math::fold3(relative_coordinates, Add::add);
 
         // Positions relative to origin point.
-        let pos0 = math::sub3(point, skewed_floor);
+        let origin_relative_position = math::sub3(point, skewed_floor);
 
         let mut value = zero;
 
         let mut vertex;
-        let mut dpos;
+        let mut position_delta;
 
-        let mut ext0_vertex = stretched_floor;
-        let mut ext0_dpos = pos0;
-        let mut ext1_vertex = stretched_floor;
-        let mut ext1_dpos = pos0;
+        let mut extra_vertex_0 = stretched_floor;
+        let mut extra_position_delta_0 = origin_relative_position;
+        let mut extra_vertex_1 = stretched_floor;
+        let mut extra_position_delta_1 = origin_relative_position;
 
         if region_sum <= one {
             // We're inside the tetrahedron (3-Simplex) at (0, 0, 0)
@@ -276,23 +277,23 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
             // Contribution at (0, 0, 0)
             vertex = math::add3(stretched_floor, [zero, zero, zero]);
-            dpos = math::sub3(pos0, [zero, zero, zero]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [zero, zero, zero]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (1, 0, 0)
             vertex = math::add3(stretched_floor, [one, zero, zero]);
-            dpos = math::sub3(pos0, [t1, t0, t0]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t1, t0, t0]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (0, 1, 0)
             vertex = math::add3(stretched_floor, [zero, one, zero]);
-            dpos = math::sub3(pos0, [t0, t1, t0]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t0, t1, t0]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (0, 0, 1)
             vertex = math::add3(stretched_floor, [zero, zero, one]);
-            dpos = math::sub3(pos0, [t0, t0, t1]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t0, t0, t1]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Surflet radius is slightly larger than 3-simplex, calculate contribution from the closest 2 non-shared vertices of the nearest neighboring 3-simplex
             let center_dist = one - region_sum;
@@ -301,12 +302,16 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
             // 0x02 => (0, 1, 0)
             // 0x04 => (0, 0, 1)
             let (a_point, a_dist, b_point, b_dist) = {
-                if rel_coords[0] >= rel_coords[1] && rel_coords[2] > rel_coords[1] {
-                    (0x01, rel_coords[0], 0x04, rel_coords[2])
-                } else if rel_coords[0] < rel_coords[1] && rel_coords[2] > rel_coords[0] {
-                    (0x04, rel_coords[2], 0x02, rel_coords[1])
+                if relative_coordinates[0] >= relative_coordinates[1]
+                    && relative_coordinates[2] > relative_coordinates[1]
+                {
+                    (0x01, relative_coordinates[0], 0x04, relative_coordinates[2])
+                } else if relative_coordinates[0] < relative_coordinates[1]
+                    && relative_coordinates[2] > relative_coordinates[0]
+                {
+                    (0x04, relative_coordinates[2], 0x02, relative_coordinates[1])
                 } else {
-                    (0x01, rel_coords[0], 0x02, rel_coords[1])
+                    (0x01, relative_coordinates[0], 0x02, relative_coordinates[1])
                 }
             };
             // If closer to (0, 0, 0) than either of the other 2 closest points
@@ -322,45 +327,45 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
                 if c_point & 0x01 == 0 {
                     // c_point is either (0, 1, 0) or (0, 0, 1)
-                    ext0_vertex[0] = ext0_vertex[0] - one;
-                    ext0_dpos[0] = ext0_dpos[0] + one;
+                    extra_vertex_0[0] -= one;
+                    extra_position_delta_0[0] += one;
                 } else {
                     // c_point is (1, 0, 0)
-                    ext0_vertex[0] = ext0_vertex[0] + one;
-                    ext1_vertex[0] = ext1_vertex[0] + one;
-                    ext0_dpos[0] = ext0_dpos[0] - one;
-                    ext1_dpos[0] = ext1_dpos[0] - one;
+                    extra_vertex_0[0] += one;
+                    extra_vertex_1[0] += one;
+                    extra_position_delta_0[0] -= one;
+                    extra_position_delta_1[0] -= one;
                 }
 
                 if c_point & 0x02 == 0 {
                     // c_point is either (1, 0, 0) or (0, 0, 1)
                     if c_point & 0x01 == 0 {
                         // c_point is (0, 0, 1)
-                        ext1_vertex[1] = ext1_vertex[1] - one;
-                        ext1_dpos[1] = ext1_dpos[1] + one;
+                        extra_vertex_1[1] -= one;
+                        extra_position_delta_1[1] += one;
                     } else {
                         // c_point is (1, 0, 0)
-                        ext0_vertex[1] = ext0_vertex[1] - one;
-                        ext0_dpos[1] = ext0_dpos[1] + one;
+                        extra_vertex_0[1] -= one;
+                        extra_position_delta_0[1] += one;
                     }
                 } else {
                     // c_point is (0, 1, 0)
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext1_vertex[1] = ext1_vertex[1] + one;
-                    ext0_dpos[1] = ext0_dpos[1] - one;
-                    ext1_dpos[1] = ext1_dpos[1] - one;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_1[1] += one;
+                    extra_position_delta_0[1] -= one;
+                    extra_position_delta_1[1] -= one;
                 }
 
                 if c_point & 0x04 == 0 {
                     // c_point is either (1, 0, 0) or (0, 1, 0)
-                    ext1_vertex[2] = ext1_vertex[2] - one;
-                    ext1_dpos[2] = ext1_dpos[2] + one;
+                    extra_vertex_1[2] -= one;
+                    extra_position_delta_1[2] += one;
                 } else {
                     // c_point is (0, 0, 1)
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext1_vertex[2] = ext1_vertex[2] + one;
-                    ext0_dpos[2] = ext0_dpos[2] - one;
-                    ext1_dpos[2] = ext1_dpos[2] - one;
+                    extra_vertex_0[2] += one;
+                    extra_vertex_1[2] += one;
+                    extra_position_delta_0[2] -= one;
+                    extra_position_delta_1[2] -= one;
                 }
             } else {
                 // a and b are the closest points
@@ -378,41 +383,41 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
                 if c_point & 0x01 == 0 {
                     // Nearest points are (0, 1, 0) and (0, 0, 1)
-                    ext1_vertex[0] = ext1_vertex[0] - one;
-                    ext0_dpos[0] = ext0_dpos[0] - t0;
-                    ext1_dpos[0] = ext1_dpos[0] + t2;
+                    extra_vertex_1[0] -= one;
+                    extra_position_delta_0[0] -= t0;
+                    extra_position_delta_1[0] += t2;
                 } else {
                     // (1, 0, 0) is a closest point
-                    ext0_vertex[0] = ext0_vertex[0] + one;
-                    ext1_vertex[0] = ext1_vertex[0] + one;
-                    ext0_dpos[0] = ext0_dpos[0] - t1;
-                    ext1_dpos[0] = ext1_dpos[0] - t3;
+                    extra_vertex_0[0] += one;
+                    extra_vertex_1[0] += one;
+                    extra_position_delta_0[0] -= t1;
+                    extra_position_delta_1[0] -= t3;
                 }
 
                 if c_point & 0x02 == 0 {
                     // Nearest points are (1, 0, 0) and (0, 0, 1)
-                    ext1_vertex[1] = ext1_vertex[1] - one;
-                    ext0_dpos[1] = ext0_dpos[1] - t0;
-                    ext1_dpos[1] = ext1_dpos[1] + t2;
+                    extra_vertex_1[1] -= one;
+                    extra_position_delta_0[1] -= t0;
+                    extra_position_delta_1[1] += t2;
                 } else {
                     // (0, 1, 0) is a closest point
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext1_vertex[1] = ext1_vertex[1] + one;
-                    ext0_dpos[1] = ext0_dpos[1] - t1;
-                    ext1_dpos[1] = ext1_dpos[1] - t3;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_1[1] += one;
+                    extra_position_delta_0[1] -= t1;
+                    extra_position_delta_1[1] -= t3;
                 }
 
                 if c_point & 0x04 == 0 {
                     // Nearest points are (1, 0, 0) and (0, 1, 0)
-                    ext1_vertex[2] = ext1_vertex[2] - one;
-                    ext0_dpos[2] = ext0_dpos[2] - t0;
-                    ext1_dpos[2] = ext1_dpos[2] + t2;
+                    extra_vertex_1[2] -= one;
+                    extra_position_delta_0[2] -= t0;
+                    extra_position_delta_1[2] += t2;
                 } else {
                     // (0, 0, 1) is a closest point
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext1_vertex[2] = ext1_vertex[2] + one;
-                    ext0_dpos[2] = ext0_dpos[2] - t1;
-                    ext1_dpos[2] = ext1_dpos[2] - t3;
+                    extra_vertex_0[2] += one;
+                    extra_vertex_1[2] += one;
+                    extra_position_delta_0[2] -= t1;
+                    extra_position_delta_1[2] -= t3;
                 }
             }
         } else if region_sum >= two {
@@ -423,23 +428,23 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
             // Contribution at (1, 1, 0)
             vertex = math::add3(stretched_floor, [one, one, zero]);
-            dpos = math::sub3(pos0, [t1, t1, t0]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t1, t1, t0]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (1, 0, 1)
             vertex = math::add3(stretched_floor, [one, zero, one]);
-            dpos = math::sub3(pos0, [t1, t0, t1]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t1, t0, t1]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (0, 1, 1)
             vertex = math::add3(stretched_floor, [zero, one, one]);
-            dpos = math::sub3(pos0, [t0, t1, t1]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t0, t1, t1]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (1, 1, 1)
             vertex = math::add3(stretched_floor, [one, one, one]);
-            dpos = math::sub3(pos0, [t2, t2, t2]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t2, t2, t2]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Surflet radius is slightly larger than 3-simplex, calculate contribution from the closest 2 non-shared vertices of the nearest neighboring 3-simplex
             let center_dist = three - region_sum;
@@ -448,12 +453,16 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
             // 0x05 => (1, 0, 1)
             // 0x06 => (0, 1, 1)
             let (a_point, a_dist, b_point, b_dist) = {
-                if rel_coords[0] <= rel_coords[1] && rel_coords[2] < rel_coords[1] {
-                    (0x06, rel_coords[0], 0x03, rel_coords[2])
-                } else if rel_coords[0] > rel_coords[1] && rel_coords[2] < rel_coords[0] {
-                    (0x03, rel_coords[2], 0x05, rel_coords[1])
+                if relative_coordinates[0] <= relative_coordinates[1]
+                    && relative_coordinates[2] < relative_coordinates[1]
+                {
+                    (0x06, relative_coordinates[0], 0x03, relative_coordinates[2])
+                } else if relative_coordinates[0] > relative_coordinates[1]
+                    && relative_coordinates[2] < relative_coordinates[0]
+                {
+                    (0x03, relative_coordinates[2], 0x05, relative_coordinates[1])
                 } else {
-                    (0x06, rel_coords[0], 0x05, rel_coords[1])
+                    (0x06, relative_coordinates[0], 0x05, relative_coordinates[1])
                 }
             };
             // If closer to (1, 1, 1) than either of the other 2 closest points
@@ -473,47 +482,47 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
                 if c_point & 0x01 != 0 {
                     // c_point is either (1, 1, 0) or (1, 0, 1)
-                    ext0_vertex[0] = ext0_vertex[0] + two;
-                    ext1_vertex[0] = ext1_vertex[0] + one;
-                    ext0_dpos[0] = ext0_dpos[0] - t2;
-                    ext1_dpos[0] = ext1_dpos[0] - t1;
+                    extra_vertex_0[0] += two;
+                    extra_vertex_1[0] += one;
+                    extra_position_delta_0[0] -= t2;
+                    extra_position_delta_1[0] -= t1;
                 } else {
                     // c_point is (0, 1, 1)
-                    ext0_dpos[0] = ext0_dpos[0] - t0;
-                    ext1_dpos[0] = ext1_dpos[0] - t0;
+                    extra_position_delta_0[0] -= t0;
+                    extra_position_delta_1[0] -= t0;
                 }
 
                 if c_point & 0x02 != 0 {
                     // c_point is either (1, 1, 0) or (0, 1, 1)
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext1_vertex[1] = ext1_vertex[1] + one;
-                    ext0_dpos[1] = ext0_dpos[1] - t1;
-                    ext1_dpos[1] = ext1_dpos[1] - t1;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_1[1] += one;
+                    extra_position_delta_0[1] -= t1;
+                    extra_position_delta_1[1] -= t1;
                     if c_point & 0x01 != 0 {
                         // c_point is (1, 1, 0)
-                        ext1_vertex[1] = ext1_vertex[1] + one;
-                        ext1_dpos[1] = ext1_dpos[1] - one;
+                        extra_vertex_1[1] += one;
+                        extra_position_delta_1[1] -= one;
                     } else {
                         // c_point is (0, 1, 1)
-                        ext0_vertex[1] = ext0_vertex[1] + one;
-                        ext0_dpos[1] = ext0_dpos[1] - one;
+                        extra_vertex_0[1] += one;
+                        extra_position_delta_0[1] -= one;
                     }
                 } else {
                     // c_point is (1, 0, 1)
-                    ext0_dpos[1] = ext0_dpos[1] - t0;
-                    ext1_dpos[1] = ext1_dpos[1] - t0;
+                    extra_position_delta_0[1] -= t0;
+                    extra_position_delta_1[1] -= t0;
                 }
 
                 if c_point & 0x04 != 0 {
                     // c_point is either (1, 0, 1) or (0, 1, 1)
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext1_vertex[2] = ext1_vertex[2] + two;
-                    ext0_dpos[2] = ext0_dpos[2] - t1;
-                    ext1_dpos[2] = ext1_dpos[2] - t2;
+                    extra_vertex_0[2] += one;
+                    extra_vertex_1[2] += two;
+                    extra_position_delta_0[2] -= t1;
+                    extra_position_delta_1[2] -= t2;
                 } else {
                     // c_point is (1, 1, 0)
-                    ext0_dpos[2] = ext0_dpos[2] - t0;
-                    ext1_dpos[2] = ext1_dpos[2] - t0;
+                    extra_position_delta_0[2] -= t0;
+                    extra_position_delta_1[2] -= t0;
                 }
             } else {
                 // a and b determine ext0 and ext1:
@@ -531,35 +540,35 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
                 if c_point & 0x01 != 0 {
                     // a, b are (1, 1, 0), (1, 0, 1)
-                    ext0_vertex[0] = ext0_vertex[0] + one;
-                    ext1_vertex[0] = ext1_vertex[0] + two;
-                    ext0_dpos[0] = ext0_dpos[0] - t1;
-                    ext1_dpos[0] = ext1_dpos[0] - t3;
+                    extra_vertex_0[0] += one;
+                    extra_vertex_1[0] += two;
+                    extra_position_delta_0[0] -= t1;
+                    extra_position_delta_1[0] -= t3;
                 } else {
-                    ext0_dpos[0] = ext0_dpos[0] - t0;
-                    ext1_dpos[0] = ext1_dpos[0] - t2;
+                    extra_position_delta_0[0] -= t0;
+                    extra_position_delta_1[0] -= t2;
                 }
 
                 if c_point & 0x02 != 0 {
                     // a, b are (1, 1, 0), (0, 1, 1)
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext1_vertex[1] = ext1_vertex[1] + two;
-                    ext0_dpos[1] = ext0_dpos[1] - t1;
-                    ext1_dpos[1] = ext1_dpos[1] - t3;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_1[1] += two;
+                    extra_position_delta_0[1] -= t1;
+                    extra_position_delta_1[1] -= t3;
                 } else {
-                    ext0_dpos[1] = ext0_dpos[1] - t0;
-                    ext1_dpos[1] = ext1_dpos[1] - t2;
+                    extra_position_delta_0[1] -= t0;
+                    extra_position_delta_1[1] -= t2;
                 }
 
                 if c_point & 0x04 != 0 {
                     // a, b are (1, 0, 1), (0, 1, 1)
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext1_vertex[2] = ext1_vertex[2] + two;
-                    ext0_dpos[2] = ext0_dpos[2] - t1;
-                    ext1_dpos[2] = ext1_dpos[2] - t3;
+                    extra_vertex_0[2] += one;
+                    extra_vertex_1[2] += two;
+                    extra_position_delta_0[2] -= t1;
+                    extra_position_delta_1[2] -= t3;
                 } else {
-                    ext0_dpos[2] = ext0_dpos[2] - t0;
-                    ext1_dpos[2] = ext1_dpos[2] - t2;
+                    extra_position_delta_0[2] -= t0;
+                    extra_position_delta_1[2] -= t2;
                 }
             }
         } else {
@@ -571,33 +580,33 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
             // Contribution at (1, 0, 0)
             vertex = math::add3(stretched_floor, [one, zero, zero]);
-            dpos = math::sub3(pos0, [t1, t0, t0]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t1, t0, t0]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (0, 1, 0)
             vertex = math::add3(stretched_floor, [zero, one, zero]);
-            dpos = math::sub3(pos0, [t0, t1, t0]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t0, t1, t0]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (0, 0, 1)
             vertex = math::add3(stretched_floor, [zero, zero, one]);
-            dpos = math::sub3(pos0, [t0, t0, t1]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t0, t0, t1]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (1, 1, 0)
             vertex = math::add3(stretched_floor, [one, one, zero]);
-            dpos = math::sub3(pos0, [t3, t3, t2]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t3, t3, t2]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (1, 0, 1)
             vertex = math::add3(stretched_floor, [one, zero, one]);
-            dpos = math::sub3(pos0, [t3, t2, t3]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t3, t2, t3]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Contribution at (0, 1, 1)
             vertex = math::add3(stretched_floor, [zero, one, one]);
-            dpos = math::sub3(pos0, [t2, t3, t3]);
-            value = value + gradient(&self.perm_table, vertex, dpos);
+            position_delta = math::sub3(origin_relative_position, [t2, t3, t3]);
+            value += gradient(&self.perm_table, vertex, position_delta);
 
             // Surflet radius is slightly larger than 3-simplex, calculate contribution from the closest 2 non-shared vertices of the nearest neighboring 3-simplex
 
@@ -611,7 +620,7 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
             let (a_point, _a_dist, a_is_further, b_point, _b_dist, b_is_further) = {
                 // Pick closest of (0,0,1) and (1,1,0) for point a
-                let a_temp = rel_coords[0] + rel_coords[1];
+                let a_temp = relative_coordinates[0] + relative_coordinates[1];
                 let (mut a_point, mut a_dist, mut a_is_further) = if a_temp > one {
                     (0x03, a_temp - one, true)
                 } else {
@@ -619,7 +628,7 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
                 };
 
                 // Pick closest of (0,1,0) and (1,0,1) for point b
-                let b_temp = rel_coords[0] + rel_coords[2];
+                let b_temp = relative_coordinates[0] + relative_coordinates[2];
                 let (mut b_point, mut b_dist, mut b_is_further) = if b_temp > one {
                     (0x05, b_temp - one, true)
                 } else {
@@ -627,7 +636,7 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
                 };
 
                 // If either of (1,0,0) and (0,1,1) are closer than a or b, replace the farther of those two
-                let c_temp = rel_coords[1] + rel_coords[2];
+                let c_temp = relative_coordinates[1] + relative_coordinates[2];
                 if c_temp > one {
                     let c_dist = c_temp - one;
                     if a_dist <= b_dist && a_dist < c_dist {
@@ -671,34 +680,34 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
                     let t2 = one + squish_constant + t0;
 
                     // ext0 = (1, 1, 1)
-                    ext0_vertex[0] = ext0_vertex[0] + one;
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext0_dpos[0] = ext0_dpos[0] - t2;
-                    ext0_dpos[1] = ext0_dpos[1] - t2;
-                    ext0_dpos[2] = ext0_dpos[2] - t2;
+                    extra_vertex_0[0] += one;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_0[2] += one;
+                    extra_position_delta_0[0] -= t2;
+                    extra_position_delta_0[1] -= t2;
+                    extra_position_delta_0[2] -= t2;
 
                     // ext1 is based on the common axis between a and b
                     let c_point = a_point & b_point;
 
                     if c_point & 0x01 != 0 {
                         // a and b share (1, 0, 0)
-                        ext1_vertex[0] = ext1_vertex[0] + two;
-                        ext1_dpos[0] = ext1_dpos[0] - t1;
-                        ext1_dpos[1] = ext1_dpos[1] - t0;
-                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                        extra_vertex_1[0] += two;
+                        extra_position_delta_1[0] -= t1;
+                        extra_position_delta_1[1] -= t0;
+                        extra_position_delta_1[2] -= t0;
                     } else if c_point & 0x02 != 0 {
                         // a and b share (0, 1, 0)
-                        ext1_vertex[1] = ext1_vertex[1] + two;
-                        ext1_dpos[0] = ext1_dpos[0] - t0;
-                        ext1_dpos[1] = ext1_dpos[1] - t1;
-                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                        extra_vertex_1[1] += two;
+                        extra_position_delta_1[0] -= t0;
+                        extra_position_delta_1[1] -= t1;
+                        extra_position_delta_1[2] -= t0;
                     } else {
                         // a and b share (0, 0, 1)
-                        ext1_vertex[2] = ext1_vertex[2] + two;
-                        ext1_dpos[0] = ext1_dpos[0] - t0;
-                        ext1_dpos[1] = ext1_dpos[1] - t0;
-                        ext1_dpos[2] = ext1_dpos[2] - t1;
+                        extra_vertex_1[2] += two;
+                        extra_position_delta_1[0] -= t0;
+                        extra_position_delta_1[1] -= t0;
+                        extra_position_delta_1[2] -= t1;
                     }
                 } else {
                     // Both points on the side of (0, 0, 0)
@@ -716,28 +725,28 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
                     let c_point = a_point | b_point;
                     if c_point & 0x01 == 0 {
                         // a and b lack (1, 0, 0)
-                        ext1_vertex[0] = ext1_vertex[0] - one;
-                        ext1_vertex[1] = ext1_vertex[1] + one;
-                        ext1_vertex[2] = ext1_vertex[2] + one;
-                        ext1_dpos[0] = ext1_dpos[0] + t1;
-                        ext1_dpos[1] = ext1_dpos[1] - t0;
-                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                        extra_vertex_1[0] -= one;
+                        extra_vertex_1[1] += one;
+                        extra_vertex_1[2] += one;
+                        extra_position_delta_1[0] += t1;
+                        extra_position_delta_1[1] -= t0;
+                        extra_position_delta_1[2] -= t0;
                     } else if c_point & 0x02 == 0 {
                         // a and b lack (0, 1, 0)
-                        ext1_vertex[0] = ext1_vertex[0] + one;
-                        ext1_vertex[1] = ext1_vertex[1] - one;
-                        ext1_vertex[2] = ext1_vertex[2] + one;
-                        ext1_dpos[0] = ext1_dpos[0] - t0;
-                        ext1_dpos[1] = ext1_dpos[1] + t1;
-                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                        extra_vertex_1[0] += one;
+                        extra_vertex_1[1] -= one;
+                        extra_vertex_1[2] += one;
+                        extra_position_delta_1[0] -= t0;
+                        extra_position_delta_1[1] += t1;
+                        extra_position_delta_1[2] -= t0;
                     } else {
                         // a and b lack (0, 0, 1)
-                        ext1_vertex[0] = ext1_vertex[0] + one;
-                        ext1_vertex[1] = ext1_vertex[1] + one;
-                        ext1_vertex[2] = ext1_vertex[2] - one;
-                        ext1_dpos[0] = ext1_dpos[0] - t0;
-                        ext1_dpos[1] = ext1_dpos[1] - t0;
-                        ext1_dpos[2] = ext1_dpos[2] + t1;
+                        extra_vertex_1[0] += one;
+                        extra_vertex_1[1] += one;
+                        extra_vertex_1[2] -= one;
+                        extra_position_delta_1[0] -= t0;
+                        extra_position_delta_1[1] -= t0;
+                        extra_position_delta_1[2] += t1;
                     }
                 }
             } else {
@@ -766,50 +775,50 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
 
                 // ext0 is (-1, 1, 1), (1, -1, 1), or (1, 1, -1)
                 if c_point0 & 0x01 == 0 {
-                    ext0_vertex[0] = ext0_vertex[0] - one;
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext0_dpos[0] = ext0_dpos[0] + t1;
-                    ext0_dpos[1] = ext0_dpos[1] - t0;
-                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                    extra_vertex_0[0] -= one;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_0[2] += one;
+                    extra_position_delta_0[0] += t1;
+                    extra_position_delta_0[1] -= t0;
+                    extra_position_delta_0[2] -= t0;
                 } else if c_point0 & 0x02 == 0 {
-                    ext0_vertex[0] = ext0_vertex[0] + one;
-                    ext0_vertex[1] = ext0_vertex[1] - one;
-                    ext0_vertex[2] = ext0_vertex[2] + one;
-                    ext0_dpos[0] = ext0_dpos[0] - t0;
-                    ext0_dpos[1] = ext0_dpos[1] + t1;
-                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                    extra_vertex_0[0] += one;
+                    extra_vertex_0[1] -= one;
+                    extra_vertex_0[2] += one;
+                    extra_position_delta_0[0] -= t0;
+                    extra_position_delta_0[1] += t1;
+                    extra_position_delta_0[2] -= t0;
                 } else {
-                    ext0_vertex[0] = ext0_vertex[0] + one;
-                    ext0_vertex[1] = ext0_vertex[1] + one;
-                    ext0_vertex[2] = ext0_vertex[2] - one;
-                    ext0_dpos[0] = ext0_dpos[0] - t0;
-                    ext0_dpos[1] = ext0_dpos[1] - t0;
-                    ext0_dpos[2] = ext0_dpos[2] + t1;
+                    extra_vertex_0[0] += one;
+                    extra_vertex_0[1] += one;
+                    extra_vertex_0[2] -= one;
+                    extra_position_delta_0[0] -= t0;
+                    extra_position_delta_0[1] -= t0;
+                    extra_position_delta_0[2] += t1;
                 }
 
                 // One contribution is a permutation of (0,0,2)
-                ext1_dpos[0] = ext1_dpos[0] - t2;
-                ext1_dpos[1] = ext1_dpos[1] - t2;
-                ext1_dpos[2] = ext1_dpos[2] - t2;
+                extra_position_delta_1[0] -= t2;
+                extra_position_delta_1[1] -= t2;
+                extra_position_delta_1[2] -= t2;
                 if c_point1 & 0x01 != 0 {
-                    ext1_vertex[0] = ext1_vertex[0] + two;
-                    ext1_dpos[0] = ext1_dpos[0] - two;
+                    extra_vertex_1[0] += two;
+                    extra_position_delta_1[0] -= two;
                 } else if c_point1 & 0x02 != 0 {
-                    ext1_vertex[1] = ext1_vertex[1] + two;
-                    ext1_dpos[1] = ext1_dpos[1] - two;
+                    extra_vertex_1[1] += two;
+                    extra_position_delta_1[1] -= two;
                 } else {
-                    ext1_vertex[2] = ext1_vertex[2] + two;
-                    ext1_dpos[2] = ext1_dpos[2] - two;
+                    extra_vertex_1[2] += two;
+                    extra_position_delta_1[2] -= two;
                 }
             }
         }
 
         // Contribution at ext0
-        value = value + gradient(&self.perm_table, ext0_vertex, ext0_dpos);
+        value += gradient(&self.perm_table, extra_vertex_0, extra_position_delta_0);
 
         // Contribution at ext1
-        value = value + gradient(&self.perm_table, ext1_vertex, ext1_dpos);
+        value += gradient(&self.perm_table, extra_vertex_1, extra_position_delta_1);
 
         value * Self::NORM_CONSTANT_3D
     }
