@@ -127,25 +127,25 @@ impl NoiseFn<[f64; 2]> for OpenSimplex {
         dpos = math::sub2(pos0, [t0, t1]);
         value = value + gradient(&self.perm_table, vertex, dpos);
 
-        //                           ( 1, -1)
-        //                          /    |
-        //                        /  D   |
-        //                      /        |
-        //              ( 0,  0) --- ( 1,  0) --- ( 2,  0)
-        //             /    |       /    |       /
-        //           /  E   |  A  /  B   |  C  /
-        //         /        |   /        |   /
-        // (-1,  1) --- ( 0,  1) --- ( 1,  1)
-        //                  |       /
-        //                  |  F  /
-        //                  |   /
         //              ( 0,  2)
+        //                  |   \
+        //                  |  F  \
+        //                  |       \
+        // (-1,  1) --- ( 0,  1) --- ( 1,  1)
+        //         \        |   \        |   \
+        //           \  E   |  A  \  B   |  C  \
+        //             \    |       \    |       \
+        //              ( 0,  0) --- ( 1,  0) --- ( 2,  0)
+        //                      \        |
+        //                        \  D   |
+        //                          \    |
+        //                           ( 1, -1)
 
         let ext_vertex;
         let ext_dpos;
 
         // See the graph for an intuitive explanation; the sum of `x` and `y` is
-        // only greater than `1` if we're on Region B.
+        // only greater than `1` if we're in Region B.
         if region_sum < one {
             // In region A
             // Contribution (0, 0)
@@ -230,541 +230,586 @@ impl NoiseFn<[f64; 3]> for OpenSimplex {
             }
         }
 
+        let zero = 0.0;
+        let one = 1.0;
+        let two = 2.0;
+        let three = 3.0;
+        let stretch_constant = Self::STRETCH_CONSTANT_3D;
+        let squish_constant = Self::SQUISH_CONSTANT_3D;
+
         // Place input coordinates on simplectic honeycomb.
-        let stretch_offset = math::fold3(point, Add::add) * Self::STRETCH_CONSTANT_3D;
+        let stretch_offset = math::fold3(point, Add::add) * stretch_constant;
         let stretched = math::map3(point, |v| v + stretch_offset);
 
-        // Floor to get simplectic honeycomb coordinates of rhombohedron (stretched cube) super-cell origin.
+        // Floor to get simplectic honeycomb coordinates of rhombohedron
+        // (stretched cube) super-cell origin.
         let stretched_floor = math::map3(stretched, f64::floor);
 
-        // Skew out to get actual coordinates of rhombohedron origin. We'll need these later.
-        let squish_offset = math::fold3(stretched_floor, Add::add) * Self::SQUISH_CONSTANT_3D;
+        // Skew out to get actual coordinates of rhombohedron origin. We'll need
+        // these later.
+        let squish_offset = math::fold3(stretched_floor, Add::add) * squish_constant;
         let skewed_floor = math::map3(stretched_floor, |v| v + squish_offset);
 
         // Compute simplectic honeycomb coordinates relative to rhombohedral origin.
-        let relative_coords = math::sub3(stretched, stretched_floor);
+        let rel_coords = math::sub3(stretched, stretched_floor);
 
         // Sum those together to get a value that determines which region we're in.
-        let region_sum = math::fold3(relative_coords, Add::add);
+        let region_sum = math::fold3(rel_coords, Add::add);
 
         // Positions relative to origin point.
-        let position_delta = math::sub3(point, skewed_floor);
+        let pos0 = math::sub3(point, skewed_floor);
 
-        let mut value = 0.0;
+        let mut value = zero;
 
         let mut vertex;
         let mut dpos;
 
-        let mut dx_ext0 = 0.0;
-        let mut dy_ext0 = 0.0;
-        let mut dz_ext0 = 0.0;
-        let mut dx_ext1 = 0.0;
-        let mut dy_ext1 = 0.0;
-        let mut dz_ext1 = 0.0;
-        let mut xsv_ext0 = 0.0;
-        let mut ysv_ext0 = 0.0;
-        let mut zsv_ext0 = 0.0;
-        let mut xsv_ext1 = 0.0;
-        let mut ysv_ext1 = 0.0;
-        let mut zsv_ext1 = 0.0;
+        let mut ext0_vertex = stretched_floor;
+        let mut ext0_dpos = pos0;
+        let mut ext1_vertex = stretched_floor;
+        let mut ext1_dpos = pos0;
 
-        if region_sum <= 1.0 {
-            // Inside the tetrahedron (3-Simplex) at (0, 0, 0)
-
-            // Determine which two of (0, 0, 1), (0, 1, 0), or (1, 0, 0) are closest
-            let mut a_point = 0x01u8;
-            let mut b_point = 0x02u8;
-            let mut a_score = relative_coords[0];
-            let mut b_score = relative_coords[1];
-
-            if a_score >= b_score && relative_coords[2] > b_score {
-                b_score = relative_coords[2];
-                b_point = 0x04;
-            } else if a_score < b_score && relative_coords[2] > a_score {
-                a_score = relative_coords[2];
-                a_point = 0x04;
-            }
-
-            // Now determine the two lattice points not part of the tetrahedron that may contribute.
-            // This depends on the closest two tetrahedral vertices, including (0, 0, 0)
-            let wins = 1.0 - region_sum;
-
-            if wins > a_score || wins > b_score {
-                // (0, 0, 0) is one of the closest tetrahedral vertices
-                let c = if b_score > a_score {
-                    b_point
-                } else {
-                    // The other vertex is closest
-                    a_point
-                };
-
-                if (c & 0x01) == 0 {
-                    xsv_ext0 = stretched_floor[0] - 1.0;
-                    xsv_ext1 = stretched_floor[0];
-                    dx_ext0 = position_delta[0] + 1.0;
-                    dx_ext1 = position_delta[0];
-                } else {
-                    xsv_ext0 = stretched_floor[0] + 1.0;
-                    xsv_ext1 = xsv_ext0;
-                    dx_ext0 = position_delta[0] - 1.0;
-                    dx_ext1 = dx_ext0;
-                }
-
-                if (c & 0x02) == 0 {
-                    ysv_ext0 = stretched_floor[1];
-                    ysv_ext1 = stretched_floor[1];
-                    dy_ext0 = position_delta[1];
-                    dy_ext1 = position_delta[1];
-
-                    if (c & 0x01) == 0 {
-                        ysv_ext1 -= 1.0;
-                        dy_ext1 += 1.0;
-                    } else {
-                        ysv_ext0 -= 1.0;
-                        dy_ext0 += 1.0;
-                    }
-                } else {
-                    ysv_ext0 = stretched_floor[1] + 1.0;
-                    ysv_ext1 = ysv_ext0;
-                    dy_ext0 = position_delta[1] - 1.0;
-                    dy_ext1 = dy_ext0;
-                }
-
-                if (c & 0x04) == 0 {
-                    zsv_ext0 = stretched_floor[2];
-                    zsv_ext1 = stretched_floor[2] - 1.0;
-                    dz_ext0 = position_delta[2];
-                    dz_ext1 = position_delta[2] + 1.0;
-                } else {
-                    zsv_ext0 = stretched_floor[2] + 1.0;
-                    zsv_ext1 = zsv_ext0;
-                    dz_ext0 = position_delta[2] - 1.0;
-                    dz_ext1 = dz_ext0;
-                }
-            } else {
-                // (0, 0, 0) is not one of the closest two tetrahedral vertices
-
-                // The two extra vertices are determined by the closest two
-                let c = (a_point | b_point) as u8;
-
-                if (c & 0x01) == 0 {
-                    xsv_ext0 = stretched_floor[0];
-                    xsv_ext1 = stretched_floor[0] - 1.0;
-                    dx_ext0 = position_delta[0] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                    dx_ext1 = position_delta[0] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                } else {
-                    xsv_ext0 = stretched_floor[0] + 1.0;
-                    xsv_ext1 = xsv_ext0;
-                    dx_ext0 = position_delta[0] - 1.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
-                    dx_ext1 = position_delta[0] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                }
-
-                if (c & 0x02) == 0 {
-                    ysv_ext0 = stretched_floor[1];
-                    ysv_ext1 = stretched_floor[1] - 1.0;
-                    dy_ext0 = position_delta[1] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                } else {
-                    ysv_ext0 = stretched_floor[1] + 1.0;
-                    ysv_ext1 = ysv_ext0;
-                    dy_ext0 = position_delta[1] - 1.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                }
-
-                if (c & 0x04) == 0 {
-                    zsv_ext0 = stretched_floor[2];
-                    zsv_ext1 = stretched_floor[2] - 1.0;
-                    dz_ext0 = position_delta[2] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                } else {
-                    zsv_ext0 = stretched_floor[2] + 1.0;
-                    zsv_ext1 = xsv_ext0;
-                    dz_ext0 = position_delta[2] - 1.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                }
-            }
-
-            let t0 = Self::SQUISH_CONSTANT_3D;
-            let t1 = Self::SQUISH_CONSTANT_3D + 1.0;
+        if region_sum <= one {
+            // We're inside the tetrahedron (3-Simplex) at (0, 0, 0)
+            let t0 = squish_constant;
+            let t1 = squish_constant + one;
 
             // Contribution at (0, 0, 0)
-            vertex = math::add3(stretched_floor, [0.0, 0.0, 0.0]);
-            dpos = math::sub3(position_delta, [0.0, 0.0, 0.0]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [zero, zero, zero]);
+            dpos = math::sub3(pos0, [zero, zero, zero]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (1, 0, 0)
-            vertex = math::add3(stretched_floor, [1.0, 0.0, 0.0]);
-            dpos = math::sub3(position_delta, [t1, t0, t0]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, zero, zero]);
+            dpos = math::sub3(pos0, [t1, t0, t0]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (0, 1, 0)
-            vertex = math::add3(stretched_floor, [0.0, 1.0, 0.0]);
-            dpos = math::sub3(position_delta, [t0, t1, t0]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [zero, one, zero]);
+            dpos = math::sub3(pos0, [t0, t1, t0]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (0, 0, 1)
-            vertex = math::add3(stretched_floor, [0.0, 0.0, 1.0]);
-            dpos = math::sub3(position_delta, [t0, t0, t1]);
-            value += gradient(&self.perm_table, vertex, dpos);
-        } else if region_sum >= 2.0 {
-            // Inside the tetrahedron (3-Simplex) at (1, 1, 1)
+            vertex = math::add3(stretched_floor, [zero, zero, one]);
+            dpos = math::sub3(pos0, [t0, t0, t1]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
-            // Determine which two tetrahedral vertices are the closest, out of (1, 1, 0), (1, 0, 1), (0, 1, 1), but not (1, 1, 1)
-            let mut a_point = 0x06u8;
-            let mut b_point = 0x05u8;
-            let mut a_score = relative_coords[0];
-            let mut b_score = relative_coords[1];
-
-            if a_score <= b_score && relative_coords[2] < b_score {
-                b_score = relative_coords[2];
-                b_point = 0x03;
-            } else {
-                a_score = relative_coords[2];
-                a_point = 0x03;
-            }
-
-            // Now determine the two lattice points not part of the tetrahedron that may contribute.
-            // This depends on the closest two tetrahedral vertices, including (1, 1, 1).
-            let wins = 3.0 - region_sum;
-            if wins < a_score || wins < b_score {
-                // (1, 1, 1) is one of the two closest tetrahedral vertices.
-                let c = if b_score < a_score {
-                    b_point
+            // Surflet radius is slightly larger than 3-simplex, calculate contribution from the closest 2 non-shared vertices of the nearest neighboring 3-simplex
+            let center_dist = one - region_sum;
+            // Find the closest two points inside the current 3-simplex
+            // 0x01 => (1, 0, 0)
+            // 0x02 => (0, 1, 0)
+            // 0x04 => (0, 0, 1)
+            let (a_point, a_dist, b_point, b_dist) = {
+                if rel_coords[0] >= rel_coords[1] && rel_coords[2] > rel_coords[1] {
+                    (0x01, rel_coords[0], 0x04, rel_coords[2])
+                } else if rel_coords[0] < rel_coords[1] && rel_coords[2] > rel_coords[0] {
+                    (0x04, rel_coords[2], 0x02, rel_coords[1])
                 } else {
-                    a_point
-                };
+                    (0x01, rel_coords[0], 0x02, rel_coords[1])
+                }
+            };
+            // If closer to (0, 0, 0) than either of the other 2 closest points
+            if center_dist > a_dist || center_dist > b_dist {
+                // (0, 0, 0) is one of the two closest points
+                // Other closest point determines ext0 and ext1:
+                // (1, 0, 0) => ext0 = (1, -1, 0), ext1 = (1, 0, -1)
+                // (0, 1, 0) => ext0 = (-1, 1, 0), ext1 = (0, 1, -1)
+                // (0, 0, 1) => ext0 = (-1, 0, 1), ext1 = (0, -1, 1)
 
-                if (c & 0x01) != 0 {
-                    xsv_ext0 = stretched_floor[0] + 2.0;
-                    xsv_ext1 = stretched_floor[0] + 1.0;
-                    dx_ext0 = position_delta[0] - 2.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dx_ext1 = position_delta[0] - 1.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
+                // Determine the next closest point from a and b.
+                let c_point = if a_dist < b_dist { b_point } else { a_point };
+
+                if c_point & 0x01 == 0 {
+                    // c_point is either (0, 1, 0) or (0, 0, 1)
+                    ext0_vertex[0] = ext0_vertex[0] - one;
+                    ext0_dpos[0] = ext0_dpos[0] + one;
                 } else {
-                    xsv_ext0 = stretched_floor[0];
-                    xsv_ext1 = stretched_floor[0];
-                    dx_ext0 = position_delta[0] - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dx_ext1 = dx_ext0;
+                    // c_point is (1, 0, 0)
+                    ext0_vertex[0] = ext0_vertex[0] + one;
+                    ext1_vertex[0] = ext1_vertex[0] + one;
+                    ext0_dpos[0] = ext0_dpos[0] - one;
+                    ext1_dpos[0] = ext1_dpos[0] - one;
                 }
 
-                if (c & 0x02) != 0 {
-                    ysv_ext0 = stretched_floor[1] + 1.0;
-                    ysv_ext1 = stretched_floor[1];
-                    dy_ext0 = position_delta[1] - 1.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = dy_ext0;
-
-                    if (c & 0x01) != 0 {
-                        ysv_ext1 += 1.0;
-                        dx_ext1 -= 1.0;
+                if c_point & 0x02 == 0 {
+                    // c_point is either (1, 0, 0) or (0, 0, 1)
+                    if c_point & 0x01 == 0 {
+                        // c_point is (0, 0, 1)
+                        ext1_vertex[1] = ext1_vertex[1] - one;
+                        ext1_dpos[1] = ext1_dpos[1] + one;
                     } else {
-                        ysv_ext0 += 1.0;
-                        dy_ext0 -= 1.0;
+                        // c_point is (1, 0, 0)
+                        ext0_vertex[1] = ext0_vertex[1] - one;
+                        ext0_dpos[1] = ext0_dpos[1] + one;
                     }
                 } else {
-                    ysv_ext0 = stretched_floor[1];
-                    ysv_ext1 = stretched_floor[1];
-                    dy_ext0 = position_delta[1] - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = dy_ext0;
+                    // c_point is (0, 1, 0)
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext1_vertex[1] = ext1_vertex[1] + one;
+                    ext0_dpos[1] = ext0_dpos[1] - one;
+                    ext1_dpos[1] = ext1_dpos[1] - one;
                 }
 
-                if (c & 0x04) != 0 {
-                    zsv_ext0 = stretched_floor[2] + 1.0;
-                    zsv_ext1 = stretched_floor[2] + 2.0;
-                    dz_ext0 = position_delta[2] - 1.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] - 2.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
+                if c_point & 0x04 == 0 {
+                    // c_point is either (1, 0, 0) or (0, 1, 0)
+                    ext1_vertex[2] = ext1_vertex[2] - one;
+                    ext1_dpos[2] = ext1_dpos[2] + one;
                 } else {
-                    zsv_ext0 = stretched_floor[2];
-                    zsv_ext1 = stretched_floor[2];
-                    dz_ext0 = position_delta[2] - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = dz_ext0;
+                    // c_point is (0, 0, 1)
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext1_vertex[2] = ext1_vertex[2] + one;
+                    ext0_dpos[2] = ext0_dpos[2] - one;
+                    ext1_dpos[2] = ext1_dpos[2] - one;
                 }
             } else {
-                // (1, 1, 1) is not one of the closest two tetrahedral vertices.
-                let c = (a_point & b_point) as u8;
+                // a and b are the closest points
+                let c_point = a_point | b_point;
 
-                if (c & 0x01) != 0 {
-                    xsv_ext0 = stretched_floor[0] + 1.0;
-                    xsv_ext1 = stretched_floor[0] + 2.0;
-                    dx_ext0 = position_delta[0] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dx_ext1 = position_delta[0] - 2.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
+                // a and b determine ext0 and ext1:
+                // (1, 0, 0), (0, 1, 0) => ext0 = (1, 1, 0), ext1 = (1, 1, -1)
+                // (1, 0, 0), (0, 0, 1) => ext0 = (1, 0, 1), ext1 = (1, -1, 1)
+                // (0, 1, 0), (0, 0, 1) => ext0 = (0, 1, 1), ext1 = (-1, 1, 1)
+
+                let t0 = squish_constant + squish_constant;
+                let t1 = one + t0;
+                let t2 = one - squish_constant;
+                let t3 = one + squish_constant;
+
+                if c_point & 0x01 == 0 {
+                    // Nearest points are (0, 1, 0) and (0, 0, 1)
+                    ext1_vertex[0] = ext1_vertex[0] - one;
+                    ext0_dpos[0] = ext0_dpos[0] - t0;
+                    ext1_dpos[0] = ext1_dpos[0] + t2;
                 } else {
-                    xsv_ext0 = stretched_floor[0];
-                    xsv_ext1 = stretched_floor[0];
-                    dx_ext0 = position_delta[0] - Self::SQUISH_CONSTANT_3D;
-                    dx_ext1 = position_delta[0] - 2.0 * Self::SQUISH_CONSTANT_3D;
+                    // (1, 0, 0) is a closest point
+                    ext0_vertex[0] = ext0_vertex[0] + one;
+                    ext1_vertex[0] = ext1_vertex[0] + one;
+                    ext0_dpos[0] = ext0_dpos[0] - t1;
+                    ext1_dpos[0] = ext1_dpos[0] - t3;
                 }
 
-                if (c & 0x02) != 0 {
-                    ysv_ext0 = stretched_floor[1] + 1.0;
-                    ysv_ext1 = stretched_floor[1] + 2.0;
-                    dy_ext0 = position_delta[1] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] - 2.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
+                if c_point & 0x02 == 0 {
+                    // Nearest points are (1, 0, 0) and (0, 0, 1)
+                    ext1_vertex[1] = ext1_vertex[1] - one;
+                    ext0_dpos[1] = ext0_dpos[1] - t0;
+                    ext1_dpos[1] = ext1_dpos[1] + t2;
                 } else {
-                    ysv_ext0 = stretched_floor[1];
-                    ysv_ext1 = stretched_floor[1];
-                    dy_ext0 = position_delta[1] - Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] - 2.0 * Self::SQUISH_CONSTANT_3D;
+                    // (0, 1, 0) is a closest point
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext1_vertex[1] = ext1_vertex[1] + one;
+                    ext0_dpos[1] = ext0_dpos[1] - t1;
+                    ext1_dpos[1] = ext1_dpos[1] - t3;
                 }
 
-                if (c & 0x04) != 0 {
-                    zsv_ext0 = stretched_floor[2] + 1.0;
-                    zsv_ext1 = stretched_floor[2] + 2.0;
-                    dz_ext0 = position_delta[2] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] - 2.0 - Self::SQUISH_CONSTANT_3D;
+                if c_point & 0x04 == 0 {
+                    // Nearest points are (1, 0, 0) and (0, 1, 0)
+                    ext1_vertex[2] = ext1_vertex[2] - one;
+                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                    ext1_dpos[2] = ext1_dpos[2] + t2;
                 } else {
-                    zsv_ext0 = stretched_floor[2];
-                    zsv_ext1 = stretched_floor[2];
-                    dz_ext0 = position_delta[2] - Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] - 2.0 * Self::SQUISH_CONSTANT_3D;
+                    // (0, 0, 1) is a closest point
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext1_vertex[2] = ext1_vertex[2] + one;
+                    ext0_dpos[2] = ext0_dpos[2] - t1;
+                    ext1_dpos[2] = ext1_dpos[2] - t3;
                 }
             }
-
-            let t0 = 2.0 * Self::SQUISH_CONSTANT_3D;
-            let t1 = 1.0 + 2.0 * Self::SQUISH_CONSTANT_3D;
-            let t2 = t1 + Self::SQUISH_CONSTANT_3D;
+        } else if region_sum >= two {
+            // We're inside the tetrahedron (3-Simplex) at (1, 1, 1)
+            let t0 = two * squish_constant;
+            let t1 = one + two * squish_constant;
+            let t2 = t1 + squish_constant;
 
             // Contribution at (1, 1, 0)
-            vertex = math::add3(stretched_floor, [1.0, 1.0, 0.0]);
-            dpos = math::sub3(position_delta, [t1, t1, t0]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, one, zero]);
+            dpos = math::sub3(pos0, [t1, t1, t0]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (1, 0, 1)
-            vertex = math::add3(stretched_floor, [1.0, 0.0, 1.0]);
-            dpos = math::sub3(position_delta, [t1, t0, t1]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, zero, one]);
+            dpos = math::sub3(pos0, [t1, t0, t1]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (0, 1, 1)
-            vertex = math::add3(stretched_floor, [0.0, 1.0, 1.0]);
-            dpos = math::sub3(position_delta, [t0, t1, t1]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [zero, one, one]);
+            dpos = math::sub3(pos0, [t0, t1, t1]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (1, 1, 1)
-            vertex = math::add3(stretched_floor, [1.0, 1.0, 1.0]);
-            dpos = math::sub3(position_delta, [t2, t2, t2]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, one, one]);
+            dpos = math::sub3(pos0, [t2, t2, t2]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
+
+            // Surflet radius is slightly larger than 3-simplex, calculate contribution from the closest 2 non-shared vertices of the nearest neighboring 3-simplex
+            let center_dist = three - region_sum;
+            // Find the closest two points inside the current 3-simplex
+            // 0x03 => (1, 1, 0)
+            // 0x05 => (1, 0, 1)
+            // 0x06 => (0, 1, 1)
+            let (a_point, a_dist, b_point, b_dist) = {
+                if rel_coords[0] <= rel_coords[1] && rel_coords[2] < rel_coords[1] {
+                    (0x06, rel_coords[0], 0x03, rel_coords[2])
+                } else if rel_coords[0] > rel_coords[1] && rel_coords[2] < rel_coords[0] {
+                    (0x03, rel_coords[2], 0x05, rel_coords[1])
+                } else {
+                    (0x06, rel_coords[0], 0x05, rel_coords[1])
+                }
+            };
+            // If closer to (1, 1, 1) than either of the other 2 closest points
+            if center_dist < a_dist || center_dist < b_dist {
+                // (1, 1, 1) is one of the two closest points
+                // Other closest point determines ext0 and ext1:
+                // (1, 1, 0) => ext0 = (2, 1, 0), ext1 = (1, 2, 0)
+                // (1, 0, 1) => ext0 = (2, 0, 1), ext1 = (1, 0, 2)
+                // (0, 1, 1) => ext0 = (0, 2, 1), ext1 = (0, 1, 2)
+
+                // Determine the next closest point from a and b.
+                let c_point = if b_dist < a_dist { b_point } else { a_point };
+
+                let t0 = squish_constant + squish_constant + squish_constant;
+                let t1 = one + t0;
+                let t2 = two + t0;
+
+                if c_point & 0x01 != 0 {
+                    // c_point is either (1, 1, 0) or (1, 0, 1)
+                    ext0_vertex[0] = ext0_vertex[0] + two;
+                    ext1_vertex[0] = ext1_vertex[0] + one;
+                    ext0_dpos[0] = ext0_dpos[0] - t2;
+                    ext1_dpos[0] = ext1_dpos[0] - t1;
+                } else {
+                    // c_point is (0, 1, 1)
+                    ext0_dpos[0] = ext0_dpos[0] - t0;
+                    ext1_dpos[0] = ext1_dpos[0] - t0;
+                }
+
+                if c_point & 0x02 != 0 {
+                    // c_point is either (1, 1, 0) or (0, 1, 1)
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext1_vertex[1] = ext1_vertex[1] + one;
+                    ext0_dpos[1] = ext0_dpos[1] - t1;
+                    ext1_dpos[1] = ext1_dpos[1] - t1;
+                    if c_point & 0x01 != 0 {
+                        // c_point is (1, 1, 0)
+                        ext1_vertex[1] = ext1_vertex[1] + one;
+                        ext1_dpos[1] = ext1_dpos[1] - one;
+                    } else {
+                        // c_point is (0, 1, 1)
+                        ext0_vertex[1] = ext0_vertex[1] + one;
+                        ext0_dpos[1] = ext0_dpos[1] - one;
+                    }
+                } else {
+                    // c_point is (1, 0, 1)
+                    ext0_dpos[1] = ext0_dpos[1] - t0;
+                    ext1_dpos[1] = ext1_dpos[1] - t0;
+                }
+
+                if c_point & 0x04 != 0 {
+                    // c_point is either (1, 0, 1) or (0, 1, 1)
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext1_vertex[2] = ext1_vertex[2] + two;
+                    ext0_dpos[2] = ext0_dpos[2] - t1;
+                    ext1_dpos[2] = ext1_dpos[2] - t2;
+                } else {
+                    // c_point is (1, 1, 0)
+                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                    ext1_dpos[2] = ext1_dpos[2] - t0;
+                }
+            } else {
+                // a and b determine ext0 and ext1:
+                // (1, 1, 0), (1, 0, 1) => ext0 = (1, 0, 0), ext1 = (2, 0, 0)
+                // (1, 1, 0), (0, 1, 1) => ext0 = (0, 1, 0), ext1 = (0, 2, 0)
+                // (1, 0, 1), (0, 1, 1) => ext0 = (0, 0, 1), ext1 = (0, 0, 2)
+
+                // a and b are the closest points
+                let c_point = a_point & b_point;
+
+                let t0 = squish_constant;
+                let t1 = one + t1;
+                let t2 = squish_constant + squish_constant;
+                let t3 = two + t2;
+
+                if c_point & 0x01 != 0 {
+                    // a, b are (1, 1, 0), (1, 0, 1)
+                    ext0_vertex[0] = ext0_vertex[0] + one;
+                    ext1_vertex[0] = ext1_vertex[0] + two;
+                    ext0_dpos[0] = ext0_dpos[0] - t1;
+                    ext1_dpos[0] = ext1_dpos[0] - t3;
+                } else {
+                    ext0_dpos[0] = ext0_dpos[0] - t0;
+                    ext1_dpos[0] = ext1_dpos[0] - t2;
+                }
+
+                if c_point & 0x02 != 0 {
+                    // a, b are (1, 1, 0), (0, 1, 1)
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext1_vertex[1] = ext1_vertex[1] + two;
+                    ext0_dpos[1] = ext0_dpos[1] - t1;
+                    ext1_dpos[1] = ext1_dpos[1] - t3;
+                } else {
+                    ext0_dpos[1] = ext0_dpos[1] - t0;
+                    ext1_dpos[1] = ext1_dpos[1] - t2;
+                }
+
+                if c_point & 0x04 != 0 {
+                    // a, b are (1, 0, 1), (0, 1, 1)
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext1_vertex[2] = ext1_vertex[2] + two;
+                    ext0_dpos[2] = ext0_dpos[2] - t1;
+                    ext1_dpos[2] = ext1_dpos[2] - t3;
+                } else {
+                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                    ext1_dpos[2] = ext1_dpos[2] - t2;
+                }
+            }
         } else {
             // We're inside the octahedron (Rectified 3-Simplex) inbetween.
-            let a_score;
-            let b_score;
-            let mut a_point: u8;
-            let mut b_point: u8;
-            let mut a_is_further_side: bool;
-            let mut b_is_further_side: bool;
-
-            // Decide between points (0, 0, 1) and (1, 1, 0) as closest.
-            let p1 = relative_coords[0] + relative_coords[1];
-            if p1 > 1.0 {
-                a_score = p1 - 1.0;
-                a_point = 0x03;
-                a_is_further_side = true;
-            } else {
-                a_score = 1.0 - p1;
-                a_point = 0x04;
-                a_is_further_side = false;
-            }
-
-            // Decide between points (0, 1, 0) and (1, 0, 1) as closest.
-            let p2 = relative_coords[0] + relative_coords[2];
-            if p2 > 1.0 {
-                b_score = p2 - 1.0;
-                b_point = 0x05;
-                b_is_further_side = true;
-            } else {
-                b_score = 1.0 - p2;
-                b_point = 0x02;
-                b_is_further_side = false;
-            }
-
-            // The closest out of the two (1, 0, 0) and (0, 1, 1) will replace the furthest out of the two decided above, if closer.
-            let p3 = relative_coords[1] + relative_coords[2];
-            if p3 < 1.0 {
-                let score = p3 - 1.0;
-                if a_score <= b_score && a_score < score {
-                    a_point = 0x06;
-                    a_is_further_side = true;
-                } else if a_score > b_score && b_score < score {
-                    b_point = 0x06;
-                    b_is_further_side = true;
-                }
-            } else {
-                let score = 1.0 - p3;
-                if a_score <= b_score && a_score < score {
-                    a_point = 0x01;
-                    a_is_further_side = false;
-                } else if a_score > b_score && b_score < score {
-                    b_point = 0x01;
-                    b_is_further_side = false;
-                }
-            }
-
-            // Where each of the two closest points are determines how the extra two vertices are calculated.
-            if a_is_further_side == b_is_further_side {
-                // Both closest points are on (1, 1, 1) side
-                if a_is_further_side {
-                    // One of the two extra points is (1, 1, 1)
-                    dx_ext0 = position_delta[0] - 1.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dy_ext0 = position_delta[1] - 1.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    dz_ext0 = position_delta[2] - 1.0 - 3.0 * Self::SQUISH_CONSTANT_3D;
-                    xsv_ext0 = stretched_floor[0] + 1.0;
-                    ysv_ext0 = stretched_floor[1] + 1.0;
-                    zsv_ext0 = stretched_floor[2] + 1.0;
-
-                    // Other extra point is based on the shared axis.
-                    let c = (a_point & b_point) as u8;
-
-                    if (c & 0x01) != 0 {
-                        dx_ext1 = position_delta[0] - 2.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        dy_ext1 = position_delta[1] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        dz_ext1 = position_delta[2] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        xsv_ext1 = stretched_floor[0] + 2.0;
-                        ysv_ext1 = stretched_floor[1];
-                        zsv_ext1 = stretched_floor[2];
-                    } else if (c & 0x02) != 0 {
-                        dx_ext1 = position_delta[0] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        dy_ext1 = position_delta[1] - 2.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        dz_ext1 = position_delta[2] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        xsv_ext1 = stretched_floor[0];
-                        ysv_ext1 = stretched_floor[1] + 2.0;
-                        zsv_ext1 = stretched_floor[2];
-                    } else {
-                        dx_ext1 = position_delta[0] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        dy_ext1 = position_delta[1] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        dz_ext1 = position_delta[2] - 2.0 - 2.0 * Self::SQUISH_CONSTANT_3D;
-                        xsv_ext1 = stretched_floor[0];
-                        ysv_ext1 = stretched_floor[1];
-                        zsv_ext1 = stretched_floor[2] + 2.0;
-                    }
-                } else {
-                    // Both closest points are on the (0, 0, 0) side
-                    // One of the two extra points is (0, 0, 0)
-                    dx_ext0 = position_delta[0];
-                    dy_ext0 = position_delta[1];
-                    dz_ext0 = position_delta[2];
-                    xsv_ext0 = stretched_floor[0];
-                    ysv_ext0 = stretched_floor[1];
-                    zsv_ext0 = stretched_floor[2];
-
-                    let c = (a_point | b_point) as u8;
-
-                    if (c & 0x01) != 0 {
-                        dx_ext1 = position_delta[0] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                        dy_ext1 = position_delta[1] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                        dz_ext1 = position_delta[2] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                        xsv_ext1 = stretched_floor[0] - 1.0;
-                        ysv_ext1 = stretched_floor[1] + 1.0;
-                        zsv_ext1 = stretched_floor[2] + 1.0;
-                    } else if (c & 0x02) != 0 {
-                        dx_ext1 = position_delta[0] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                        dy_ext1 = position_delta[1] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                        dz_ext1 = position_delta[2] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                        xsv_ext1 = stretched_floor[0] + 1.0;
-                        ysv_ext1 = stretched_floor[1] - 1.0;
-                        zsv_ext1 = stretched_floor[2] + 1.0;
-                    } else {
-                        dx_ext1 = position_delta[0] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                        dy_ext1 = position_delta[1] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                        dz_ext1 = position_delta[2] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                        xsv_ext1 = stretched_floor[0] + 1.0;
-                        ysv_ext1 = stretched_floor[1] + 1.0;
-                        zsv_ext1 = stretched_floor[2] - 1.0;
-                    }
-                }
-            } else {
-                // One point on (0, 0, 0) side, one point on (1, 1, 1) side
-                let c1;
-                let c2;
-                if a_is_further_side {
-                    c1 = a_point;
-                    c2 = b_point;
-                } else {
-                    c1 = b_point;
-                    c2 = a_point;
-                }
-
-                // One contribution is a permutation of (1, 1, -1)
-                if (c1 & 0x01) != 0 {
-                    dx_ext1 = position_delta[0] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    xsv_ext1 = stretched_floor[0] - 1.0;
-                    ysv_ext1 = stretched_floor[1] + 1.0;
-                    zsv_ext1 = stretched_floor[2] + 1.0;
-                } else if (c1 & 0x02) != 0 {
-                    dx_ext1 = position_delta[0] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    xsv_ext1 = stretched_floor[0] + 1.0;
-                    ysv_ext1 = stretched_floor[1] - 1.0;
-                    zsv_ext1 = stretched_floor[2] + 1.0;
-                } else {
-                    dx_ext1 = position_delta[0] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dy_ext1 = position_delta[1] - 1.0 - Self::SQUISH_CONSTANT_3D;
-                    dz_ext1 = position_delta[2] + 1.0 - Self::SQUISH_CONSTANT_3D;
-                    xsv_ext1 = stretched_floor[0] + 1.0;
-                    ysv_ext1 = stretched_floor[1] + 1.0;
-                    zsv_ext1 = stretched_floor[2] - 1.0;
-                }
-
-                // The other contribution is a permutation of (0, 0, 2)
-                dx_ext1 = position_delta[0] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                dy_ext1 = position_delta[1] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                dz_ext1 = position_delta[2] - 2.0 * Self::SQUISH_CONSTANT_3D;
-                xsv_ext1 = stretched_floor[0];
-                ysv_ext1 = stretched_floor[1];
-                zsv_ext1 = stretched_floor[2];
-
-                if (c2 & 0x01) != 0 {
-                    dx_ext1 -= 2.0;
-                    xsv_ext1 += 2.0;
-                } else if(c2 & 0x02) != 0 {
-                    dy_ext1 -= 2.0;
-                    ysv_ext1 += 2.0;
-                } else {
-                    dz_ext1 -= 2.0;
-                    zsv_ext1 += 2.0;
-                }
-            }
-
-            let t0 = Self::SQUISH_CONSTANT_3D;
-            let t1 = 1.0 + Self::SQUISH_CONSTANT_3D;
-            let t2 = 2.0 * Self::SQUISH_CONSTANT_3D;
-            let t3 = 1.0 + 2.0 * Self::SQUISH_CONSTANT_3D;
+            let t0 = squish_constant;
+            let t1 = one + squish_constant;
+            let t2 = two * squish_constant;
+            let t3 = one + two * squish_constant;
 
             // Contribution at (1, 0, 0)
-            vertex = math::add3(stretched_floor, [1.0, 0.0, 0.0]);
-            dpos = math::sub3(position_delta, [t1, t0, t0]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, zero, zero]);
+            dpos = math::sub3(pos0, [t1, t0, t0]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (0, 1, 0)
-            vertex = math::add3(stretched_floor, [0.0, 1.0, 0.0]);
-            dpos = math::sub3(position_delta, [t0, t1, t0]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [zero, one, zero]);
+            dpos = math::sub3(pos0, [t0, t1, t0]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (0, 0, 1)
-            vertex = math::add3(stretched_floor, [0.0, 0.0, 1.0]);
-            dpos = math::sub3(position_delta, [t0, t0, t1]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [zero, zero, one]);
+            dpos = math::sub3(pos0, [t0, t0, t1]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (1, 1, 0)
-            vertex = math::add3(stretched_floor, [1.0, 1.0, 0.0]);
-            dpos = math::sub3(position_delta, [t3, t3, t2]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, one, zero]);
+            dpos = math::sub3(pos0, [t3, t3, t2]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (1, 0, 1)
-            vertex = math::add3(stretched_floor, [1.0, 0.0, 1.0]);
-            dpos = math::sub3(position_delta, [t3, t2, t3]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [one, zero, one]);
+            dpos = math::sub3(pos0, [t3, t2, t3]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
 
             // Contribution at (0, 1, 1)
-            vertex = math::add3(stretched_floor, [0.0, 1.0, 1.0]);
-            dpos = math::sub3(position_delta, [t2, t3, t3]);
-            value += gradient(&self.perm_table, vertex, dpos);
+            vertex = math::add3(stretched_floor, [zero, one, one]);
+            dpos = math::sub3(pos0, [t2, t3, t3]);
+            value = value + gradient(&self.perm_table, vertex, dpos);
+
+            // Surflet radius is slightly larger than 3-simplex, calculate contribution from the closest 2 non-shared vertices of the nearest neighboring 3-simplex
+
+            // Find the closest two points inside the current 3-simplex
+            // 0x01 => (1, 0, 0)
+            // 0x02 => (0, 1, 0)
+            // 0x03 => (1, 1, 0)
+            // 0x02 => (0, 0, 1)
+            // 0x05 => (1, 0, 1)
+            // 0x06 => (0, 1, 1)
+
+            let (a_point, _a_dist, a_is_further, b_point, _b_dist, b_is_further) = {
+                // Pick closest of (0,0,1) and (1,1,0) for point a
+                let a_temp = rel_coords[0] + rel_coords[1];
+                let (mut a_point, mut a_dist, mut a_is_further) = if a_temp > one {
+                    (0x03, a_temp - one, true)
+                } else {
+                    (0x04, one - a_temp, false)
+                };
+
+                // Pick closest of (0,1,0) and (1,0,1) for point b
+                let b_temp = rel_coords[0] + rel_coords[2];
+                let (mut b_point, mut b_dist, mut b_is_further) = if b_temp > one {
+                    (0x05, b_temp - one, true)
+                } else {
+                    (0x02, one - b_temp, false)
+                };
+
+                // If either of (1,0,0) and (0,1,1) are closer than a or b, replace the farther of those two
+                let c_temp = rel_coords[1] + rel_coords[2];
+                if c_temp > one {
+                    let c_dist = c_temp - one;
+                    if a_dist <= b_dist && a_dist < c_dist {
+                        a_point = 0x06;
+                        a_dist = c_dist;
+                        a_is_further = true;
+                    } else if a_dist > b_dist && b_dist < c_dist {
+                        b_point = 0x06;
+                        b_dist = c_dist;
+                        b_is_further = true;
+                    }
+                } else {
+                    let c_dist = one - c_temp;
+                    if a_dist <= b_dist && a_dist < c_dist {
+                        a_point = 0x01;
+                        a_dist = c_dist;
+                        a_is_further = false;
+                    } else if a_dist > b_dist && b_dist < c_dist {
+                        b_point = 0x01;
+                        b_dist = c_dist;
+                        b_is_further = false;
+                    }
+                }
+
+                (a_point, a_dist, a_is_further, b_point, b_dist, b_is_further)
+            };
+
+            if a_is_further == b_is_further {
+                // a and b are on the same side of the 3-simplex
+                if a_is_further {
+                    // Both points on the side of (1, 1, 1)
+
+                    // (1, 1, 1) is ext0
+                    // The common axis between a and b determines ext0:
+                    // (1, 0, 0) => ext1 = (2, 0, 0)
+                    // (0, 1, 0) => ext1 = (0, 2, 0)
+                    // (0, 0, 1) => ext1 = (0, 0, 2)
+
+                    let t0 = squish_constant + squish_constant;
+                    let t1 = two + t0;
+                    let t2 = one + squish_constant + t0;
+
+                    // ext0 = (1, 1, 1)
+                    ext0_vertex[0] = ext0_vertex[0] + one;
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext0_dpos[0] = ext0_dpos[0] - t2;
+                    ext0_dpos[1] = ext0_dpos[1] - t2;
+                    ext0_dpos[2] = ext0_dpos[2] - t2;
+
+                    // ext1 is based on the common axis between a and b
+                    let c_point = a_point & b_point;
+
+                    if c_point & 0x01 != 0 {
+                        // a and b share (1, 0, 0)
+                        ext1_vertex[0] = ext1_vertex[0] + two;
+                        ext1_dpos[0] = ext1_dpos[0] - t1;
+                        ext1_dpos[1] = ext1_dpos[1] - t0;
+                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                    } else if c_point & 0x02 != 0 {
+                        // a and b share (0, 1, 0)
+                        ext1_vertex[1] = ext1_vertex[1] + two;
+                        ext1_dpos[0] = ext1_dpos[0] - t0;
+                        ext1_dpos[1] = ext1_dpos[1] - t1;
+                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                    } else {
+                        // a and b share (0, 0, 1)
+                        ext1_vertex[2] = ext1_vertex[2] + two;
+                        ext1_dpos[0] = ext1_dpos[0] - t0;
+                        ext1_dpos[1] = ext1_dpos[1] - t0;
+                        ext1_dpos[2] = ext1_dpos[2] - t1;
+                    }
+                } else {
+                    // Both points on the side of (0, 0, 0)
+
+                    // (0, 0, 0) is ext0
+                    // The axis that a and b lack determines ext0:
+                    // (1, 0, 0) => ext1 = (-1, 1, 1)
+                    // (0, 1, 0) => ext1 = (1, -1, 1)
+                    // (0, 0, 1) => ext1 = (1, 1, -1)
+
+                    let t0 = one + squish_constant;
+                    let t1 = one - squish_constant;
+
+                    // ext1 is based on the axis that a and b lack
+                    let c_point = a_point | b_point;
+                    if c_point & 0x01 == 0 {
+                        // a and b lack (1, 0, 0)
+                        ext1_vertex[0] = ext1_vertex[0] - one;
+                        ext1_vertex[1] = ext1_vertex[1] + one;
+                        ext1_vertex[2] = ext1_vertex[2] + one;
+                        ext1_dpos[0] = ext1_dpos[0] + t1;
+                        ext1_dpos[1] = ext1_dpos[1] - t0;
+                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                    } else if c_point & 0x02 == 0 {
+                        // a and b lack (0, 1, 0)
+                        ext1_vertex[0] = ext1_vertex[0] + one;
+                        ext1_vertex[1] = ext1_vertex[1] - one;
+                        ext1_vertex[2] = ext1_vertex[2] + one;
+                        ext1_dpos[0] = ext1_dpos[0] - t0;
+                        ext1_dpos[1] = ext1_dpos[1] + t1;
+                        ext1_dpos[2] = ext1_dpos[2] - t0;
+                    } else {
+                        // a and b lack (0, 0, 1)
+                        ext1_vertex[0] = ext1_vertex[0] + one;
+                        ext1_vertex[1] = ext1_vertex[1] + one;
+                        ext1_vertex[2] = ext1_vertex[2] - one;
+                        ext1_dpos[0] = ext1_dpos[0] - t0;
+                        ext1_dpos[1] = ext1_dpos[1] - t0;
+                        ext1_dpos[2] = ext1_dpos[2] + t1;
+                    }
+                }
+            } else {
+                // One point on the side of (0, 0, 0), one on the side of (1, 1, 1)
+
+                // The axis that the point on the side of (1, 1, 1) lacks determines ext0:
+                // (0, x, x) => ext0 = (-1, 1, 1)
+                // (x, 0, x) => ext0 = (1, -1, 1)
+                // (x, x, 0) => ext0 = (1, 1, -1)
+                // The axis that the point on the side of (0, 0, 0) has determines ext1:
+                // (1, 0, 0) => ext1 = (2, 0, 0)
+                // (0, 1, 0) => ext1 = (0, 2, 0)
+                // (0, 0, 1) => ext1 = (0, 0, 2)
+
+                let t0 = one + squish_constant;
+                let t1 = one - squish_constant;
+                let t2 = squish_constant + squish_constant;
+
+                // c_point0 takes the point on the side of (1, 1, 1)
+                // c_point1 takes the point on the side of (0, 0, 0)
+                let (c_point0, c_point1) = if a_is_further {
+                    (a_point, b_point)
+                } else {
+                    (b_point, a_point)
+                };
+
+                // ext0 is (-1, 1, 1), (1, -1, 1), or (1, 1, -1)
+                if c_point0 & 0x01 == 0 {
+                    ext0_vertex[0] = ext0_vertex[0] - one;
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext0_dpos[0] = ext0_dpos[0] + t1;
+                    ext0_dpos[1] = ext0_dpos[1] - t0;
+                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                } else if c_point0 & 0x02 == 0 {
+                    ext0_vertex[0] = ext0_vertex[0] + one;
+                    ext0_vertex[1] = ext0_vertex[1] - one;
+                    ext0_vertex[2] = ext0_vertex[2] + one;
+                    ext0_dpos[0] = ext0_dpos[0] - t0;
+                    ext0_dpos[1] = ext0_dpos[1] + t1;
+                    ext0_dpos[2] = ext0_dpos[2] - t0;
+                } else {
+                    ext0_vertex[0] = ext0_vertex[0] + one;
+                    ext0_vertex[1] = ext0_vertex[1] + one;
+                    ext0_vertex[2] = ext0_vertex[2] - one;
+                    ext0_dpos[0] = ext0_dpos[0] - t0;
+                    ext0_dpos[1] = ext0_dpos[1] - t0;
+                    ext0_dpos[2] = ext0_dpos[2] + t1;
+                }
+
+                // One contribution is a permutation of (0,0,2)
+                ext1_dpos[0] = ext1_dpos[0] - t2;
+                ext1_dpos[1] = ext1_dpos[1] - t2;
+                ext1_dpos[2] = ext1_dpos[2] - t2;
+                if c_point1 & 0x01 != 0 {
+                    ext1_vertex[0] = ext1_vertex[0] + two;
+                    ext1_dpos[0] = ext1_dpos[0] - two;
+                } else if c_point1 & 0x02 != 0 {
+                    ext1_vertex[1] = ext1_vertex[1] + two;
+                    ext1_dpos[1] = ext1_dpos[1] - two;
+                } else {
+                    ext1_vertex[2] = ext1_vertex[2] + two;
+                    ext1_dpos[2] = ext1_dpos[2] - two;
+                }
+            }
         }
 
-        // First extra vertex
-        value += gradient(&self.perm_table, [xsv_ext0, ysv_ext0, zsv_ext0], [dz_ext0, dy_ext0, dz_ext0]);
+        // Contribution at ext0
+        value = value + gradient(&self.perm_table, ext0_vertex, ext0_dpos);
 
-        // Second extra vertex
-        value += gradient(&self.perm_table, [xsv_ext1, ysv_ext1, zsv_ext1], [dz_ext1, dy_ext1, dz_ext1]);
+        // Contribution at ext1
+        value = value + gradient(&self.perm_table, ext1_vertex, ext1_dpos);
 
         value * Self::NORM_CONSTANT_3D
     }
