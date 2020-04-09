@@ -1,4 +1,5 @@
-use crate::{math::interpolate, noise_fns::NoiseFn, utils::noise_map::NoiseMap};
+use crate::{math::interpolate, noise_fns::{NoiseFn}, utils::noise_map::NoiseMap};
+use crate::noisefield::NoiseField2D;
 
 pub trait NoiseMapBuilder<'a> {
     fn set_size(self, width: usize, height: usize) -> Self;
@@ -196,6 +197,7 @@ impl<'a> NoiseMapBuilder<'a> for PlaneMapBuilder<'a> {
         let (width, height) = self.size;
 
         let mut result_map = NoiseMap::new(width, height);
+        let mut noisefield = NoiseField2D::new(width, height);
 
         let x_extent = self.x_bounds.1 - self.x_bounds.0;
         let y_extent = self.y_bounds.1 - self.y_bounds.0;
@@ -209,30 +211,41 @@ impl<'a> NoiseMapBuilder<'a> for PlaneMapBuilder<'a> {
             for x in 0..width {
                 let current_x = self.x_bounds.0 + x_step * x as f64;
 
-                let final_value = if self.is_seamless {
-                    let sw_value = self.source_module.get([current_x, current_y, 0.0]);
-                    let se_value = self
-                        .source_module
-                        .get([current_x + x_extent, current_y, 0.0]);
-                    let nw_value = self
-                        .source_module
-                        .get([current_x, current_y + y_extent, 0.0]);
-                    let ne_value =
-                        self.source_module
-                            .get([current_x + x_extent, current_y + y_extent, 0.0]);
+                noisefield.set_field_coord((x, y), (current_x, current_y));
 
-                    let x_blend = 1.0 - ((current_x - self.x_bounds.0) / x_extent);
-                    let y_blend = 1.0 - ((current_y - self.y_bounds.0) / y_extent);
+                // let final_value = if self.is_seamless {
+                //     let sw_value = self.source_module.get([current_x, current_y, 0.0]);
+                //     let se_value = self
+                //         .source_module
+                //         .get([current_x + x_extent, current_y, 0.0]);
+                //     let nw_value = self
+                //         .source_module
+                //         .get([current_x, current_y + y_extent, 0.0]);
+                //     let ne_value =
+                //         self.source_module
+                //             .get([current_x + x_extent, current_y + y_extent, 0.0]);
+                //
+                //     let x_blend = 1.0 - ((current_x - self.x_bounds.0) / x_extent);
+                //     let y_blend = 1.0 - ((current_y - self.y_bounds.0) / y_extent);
+                //
+                //     let y0 = interpolate::linear(sw_value, se_value, x_blend);
+                //     let y1 = interpolate::linear(nw_value, ne_value, x_blend);
+                //
+                //     interpolate::linear(y0, y1, y_blend)
+                // } else {
+                //     self.source_module.get([current_x, current_y, 0.0]);
+                // };
 
-                    let y0 = interpolate::linear(sw_value, se_value, x_blend);
-                    let y1 = interpolate::linear(nw_value, ne_value, x_blend);
+                // result_map.set_value(x, y, final_value);
+            }
+        }
 
-                    interpolate::linear(y0, y1, y_blend)
-                } else {
-                    self.source_module.get([current_x, current_y, 0.0])
-                };
+        noisefield = self.source_module.process_field(noisefield);
+        let grid_size = noisefield.get_grid_size();
 
-                result_map.set_value(x, y, final_value);
+        for x in 0..grid_size.0 {
+            for y in 0..grid_size.1 {
+                result_map.set_value(x, y, noisefield.get_value_at_grid_point((x, y)));
             }
         }
 

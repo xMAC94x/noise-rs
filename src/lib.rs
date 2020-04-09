@@ -10,11 +10,13 @@
 //! ```
 
 #![deny(missing_copy_implementations)]
+#![allow(dead_code)]
 
 pub use crate::noise_fns::*;
 
 mod gradient;
 mod math;
 mod noise_fns;
-mod permutationtable;
+// mod permutationtable;
 pub mod utils;
+mod noisefield;

@@ -1,6 +1,7 @@
 use crate::utils::color_gradient::Color;
 #[cfg(feature = "image")]
 use std::{self, path::Path};
+use crate::noisefield::NoiseField;
 
 const RASTER_MAX_WIDTH: u16 = 32_767;
 const RASTER_MAX_HEIGHT: u16 = 32_767;
@@ -46,11 +47,11 @@ impl NoiseImage {
         }
     }
 
-    pub fn set_border_color(self, color: Color) -> Self {
-        Self {
+    pub fn set_border_color(self, color: Color) -> Box<Self> {
+        Box::from(Self {
             border_color: color,
             ..self
-        }
+        })
     }
 
     pub fn set_value(&mut self, x: usize, y: usize, value: Color) {
@@ -124,8 +125,8 @@ impl NoiseImage {
     }
 }
 
-impl Default for NoiseImage {
-    fn default() -> Self {
-        Self::initialize()
-    }
-}
+// impl Default for NoiseImage {
+//     fn default() -> Self {
+//         Self::initialize()
+//     }
+// }

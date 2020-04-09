@@ -1,4 +1,5 @@
 use crate::noise_fns::NoiseFn;
+use crate::noisefield::*;
 
 /// Noise function that outputs a constant value.
 ///
@@ -22,5 +23,13 @@ impl Constant {
 impl<T: Copy> NoiseFn<T> for Constant {
     fn get(&self, _point: T) -> f64 {
         self.value
+    }
+
+    fn process_field(&self, mut field: NoiseField2D) -> NoiseField2D {
+        for i in 0..field.values.len() {
+            field.values[i] = self.value
+        }
+
+        field
     }
 }

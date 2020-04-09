@@ -1,16 +1,17 @@
-pub use self::cache::*;
-pub use self::combiners::*;
+// pub use self::cache::*;
+// pub use self::combiners::*;
 pub use self::generators::*;
-pub use self::modifiers::*;
-pub use self::selectors::*;
-pub use self::transformers::*;
+use crate::noisefield::*;
+// pub use self::modifiers::*;
+// pub use self::selectors::*;
+// pub use self::transformers::*;
 
-mod cache;
-mod combiners;
+// mod cache;
+// mod combiners;
 mod generators;
-mod modifiers;
-mod selectors;
-mod transformers;
+// mod modifiers;
+// mod selectors;
+// mod transformers;
 
 /// Base trait for noise functions.
 ///
@@ -27,14 +28,16 @@ mod transformers;
 /// * Combining the output values from two noise functions in various ways.
 pub trait NoiseFn<T> {
     fn get(&self, point: T) -> f64;
+
+    fn process_field(&self, field: NoiseField2D) -> NoiseField2D;
 }
 
-impl<'a, T, M: NoiseFn<T>> NoiseFn<T> for &'a M {
-    #[inline]
-    fn get(&self, point: T) -> f64 {
-        M::get(*self, point)
-    }
-}
+// impl<'a, T, M: NoiseFn<T>> NoiseFn<T> for &'a M {
+//     #[inline]
+//     fn get(&self, point: T) -> f64 {
+//         M::get(*self, point)
+//     }
+// }
 
 /// Trait for functions that require a seed before generating their values
 pub trait Seedable {
@@ -44,3 +47,4 @@ pub trait Seedable {
     /// Getter to retrieve the seed from the function
     fn seed(&self) -> u32;
 }
+

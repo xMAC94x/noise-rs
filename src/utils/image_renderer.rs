@@ -117,7 +117,7 @@ impl ImageRenderer {
         self.wrap_enabled
     }
 
-    pub fn render(&mut self, noise_map: &NoiseMap) -> NoiseImage {
+    pub fn render(&mut self, noise_map: &NoiseMap) -> Box<NoiseImage> {
         // noise_map.width
         let (width, height) = noise_map.size();
 
@@ -189,7 +189,7 @@ impl ImageRenderer {
             }
         }
 
-        destination_image
+        Box::from(destination_image)
     }
 
     fn calc_destination_color(&self, source_color: Color, light_value: f64) -> Color {
@@ -229,7 +229,7 @@ impl ImageRenderer {
         &mut self,
         noise_map: &NoiseMap,
         background: &NoiseImage,
-    ) -> NoiseImage {
+    ) -> Box<NoiseImage> {
         // noise_map.width
         let (width, height) = noise_map.size();
 
@@ -306,7 +306,7 @@ impl ImageRenderer {
             }
         }
 
-        destination_image
+        Box::from(destination_image)
     }
 
     fn calc_destination_color_with_background(
