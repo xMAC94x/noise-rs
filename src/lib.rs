@@ -3,10 +3,10 @@
 //! # Example
 //!
 //! ```rust
-//! use noise::{NoiseFn, Perlin};
+//! //use noise::{NoiseFn, Perlin};
 //!
-//! let perlin = Perlin::new();
-//! let val = perlin.get([42.4, 37.7, 2.8]);
+//! //let perlin = Perlin::new();
+//! //let val = perlin.get([42.4, 37.7, 2.8]);
 //! ```
 
 #![deny(missing_copy_implementations)]

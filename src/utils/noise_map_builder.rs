@@ -240,7 +240,7 @@ impl<'a> NoiseMapBuilder<'a> for PlaneMapBuilder<'a> {
             }
         }
 
-        noisefield = self.source_module.process_field(noisefield);
+        noisefield = self.source_module.process_field(&noisefield);
         let grid_size = noisefield.get_grid_size();
 
         for x in 0..grid_size.0 {

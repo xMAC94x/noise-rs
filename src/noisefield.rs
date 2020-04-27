@@ -56,6 +56,8 @@ impl NoiseField2D {
 
         // Check for invalid grid width or height.
         //TODO: Return an error here instead of panicking
+        assert!(grid_width > 0);
+        assert!(grid_height > 0);
         assert!(grid_width < MAX_GRID_SIZE as usize);
         assert!(grid_height < MAX_GRID_SIZE as usize);
 

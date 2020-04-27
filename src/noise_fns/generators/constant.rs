@@ -25,11 +25,14 @@ impl<T: Copy> NoiseFn<T> for Constant {
         self.value
     }
 
-    fn process_field(&self, mut field: NoiseField2D) -> NoiseField2D {
-        for i in 0..field.values.len() {
-            field.values[i] = self.value
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+
+        let mut output = field.clone();
+
+        for i in 0..output.values.len() {
+            output.values[i] = self.value
         }
 
-        field
+        output
     }
 }

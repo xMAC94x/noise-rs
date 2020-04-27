@@ -29,7 +29,7 @@ mod generators;
 pub trait NoiseFn<T> {
     fn get(&self, point: T) -> f64;
 
-    fn process_field(&self, field: NoiseField2D) -> NoiseField2D;
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D;
 }
 
 // impl<'a, T, M: NoiseFn<T>> NoiseFn<T> for &'a M {
