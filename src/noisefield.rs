@@ -1,4 +1,4 @@
-pub trait NoiseField {}
+use crate::math::Vector2;
 
 const MAX_GRID_SIZE: u16 = 32_767;
 
@@ -8,11 +8,12 @@ struct GridSize {
     height: usize,
 }
 
+pub trait NoiseField {}
+
 // pub struct NoiseField1D {
 //     x: Vec<f64>,
 //
 //     values: Vec<f64>,
-// }
 
 #[derive(Clone, Debug)]
 pub struct NoiseField2D {
@@ -21,28 +22,12 @@ pub struct NoiseField2D {
     // field_size: (f64, f64),
     // field_origin: (f64, f64),
 
-    pub x: Vec<f64>,
-    pub y: Vec<f64>,
+    // x: Vec<f64>,
+    // y: Vec<f64>,
+    pub coordinates: Vec<Vector2<f64>>,
 
     pub values: Vec<f64>,
 }
-
-// pub struct NoiseField3D {
-//     x: Vec<f64>,
-//     y: Vec<f64>,
-//     z: Vec<f64>,
-//
-//     values: Vec<f64>,
-// }
-//
-// pub struct NoiseField4D {
-//     x: Vec<f64>,
-//     y: Vec<f64>,
-//     z: Vec<f64>,
-//     w: Vec<f64>,
-//
-//     values: Vec<f64>,
-// }
 
 // impl NoiseField for NoiseField1D {}
 impl NoiseField for NoiseField2D {}
@@ -79,40 +64,47 @@ impl NoiseField2D {
             // field_size,
             // field_origin,
 
-            x: vec![0.0; grid_size],
-            y: vec![0.0; grid_size],
+            // x: vec![0.0; grid_size],
+            // y: vec![0.0; grid_size],
+            coordinates: vec![[0.0; 2]; grid_size],
 
             values: vec![0.0; grid_size],
         }
     }
 
-    pub fn get_grid_size(&self) -> (usize, usize) {
+    pub fn grid_size(&self) -> (usize, usize) {
         (self.grid_size.width, self.grid_size.height)
     }
 
-    pub fn set_field_coord(&mut self, grid_point: (usize, usize), coordinate: (f64, f64)) {
-        let (x, y) = coordinate;
+    pub fn set_field_coord(&mut self, grid_point: Vector2<usize>, coordinate: Vector2<f64>) {
+        // let [x, y] = coordinate;
 
-        let index = self.get_index_for_grid_point(grid_point);
+        let index = self.index(grid_point);
 
-        self.x[index] = x;
-        self.y[index] = y;
+        // self.x[index] = x;
+        // self.y[index] = y;
 
+        self.coordinates[index] = coordinate;
     }
 
-    pub fn get_field_coord(&self, grid_point: (usize, usize)) -> (f64, f64) {
-        let index = self.get_index_for_grid_point(grid_point);
+    pub fn coord_at_point(&self, grid_point: Vector2<usize>) -> Vector2<f64> {
+        let index = self.index(grid_point);
 
-        (self.x[index], self.y[index])
+        self.coordinates[index]
+        // [self.x[index], self.y[index]]
     }
 
-    pub fn get_value_at_grid_point(&self, grid_point: (usize, usize)) -> f64 {
-        let index = self.get_index_for_grid_point(grid_point);
+    pub fn value_at_point(&self, grid_point: Vector2<usize>) -> f64 {
+        let index = self.index(grid_point);
 
         self.values[index]
     }
 
-    fn get_index_for_grid_point(&self, grid_point: (usize, usize)) -> usize {
+    pub fn value_at_index(&self, index: usize) -> f64 {
+        self.values[index]
+    }
+
+    fn index(&self, grid_point: Vector2<usize>) -> usize {
         // Y
         // |
         // 2 | 6 7 8
@@ -121,7 +113,7 @@ impl NoiseField2D {
         // --|------
         //   | 0 1 2 - X
 
-        let (x, y) = grid_point;
+        let [x, y] = grid_point;
 
         x + (self.grid_size.width * y)
     }
@@ -136,8 +128,9 @@ impl NoiseField2D {
             // field_size: (0.0, 0.0),
             // field_origin: (0.0, 0.0),
 
-            x: Vec::new(),
-            y: Vec::new(),
+            // x: Vec::new(),
+            // y: Vec::new(),
+            coordinates: Vec::new(),
 
             values: Vec::new(),
         }
@@ -148,6 +141,23 @@ impl NoiseField2D {
 //     fn default() -> Self {
 //         Self::initialize()
 //     }
+// }
+
+// pub struct NoiseField3D {
+//     x: Vec<f64>,
+//     y: Vec<f64>,
+//     z: Vec<f64>,
+//
+//     values: Vec<f64>,
+// }
+//
+// pub struct NoiseField4D {
+//     x: Vec<f64>,
+//     y: Vec<f64>,
+//     z: Vec<f64>,
+//     w: Vec<f64>,
+//
+//     values: Vec<f64>,
 // }
 
 #[cfg(test)]
@@ -176,19 +186,19 @@ mod tests {
 
     #[test]
     fn get_index() {
-        let index = NoiseField2D::new(3, 3).get_index_for_grid_point((1,1));
+        let index = NoiseField2D::new(3, 3).index([1, 1]);
 
         assert_eq!(index, 4);
     }
 
     #[test]
     fn set_coord() {
-        let grid_point = (1, 1);
+        let grid_point = [1, 1];
+        let coordinate = [0.1, 1.5];
         let mut noisefield = NoiseField2D::new(3, 3);
-        noisefield.set_field_coord(grid_point, (0.1, 1.5));
-        let index = noisefield.get_index_for_grid_point(grid_point);
+        noisefield.set_field_coord(grid_point, coordinate);
+        let index = noisefield.index(grid_point);
 
-        assert_eq!(0.1, noisefield.x[index]);
-        assert_eq!(1.5, noisefield.y[index]);
+        assert_eq!(coordinate, noisefield.coordinates[index]);
     }
 }

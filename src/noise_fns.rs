@@ -28,8 +28,13 @@ mod generators;
 /// * Combining the output values from two noise functions in various ways.
 pub trait NoiseFn<T> {
     fn get(&self, point: T) -> f64;
+}
 
-    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D;
+pub trait NoiseFieldFn<T>
+where
+    T: NoiseField,
+{
+    fn process_field(&self, field: &T) -> T;
 }
 
 // impl<'a, T, M: NoiseFn<T>> NoiseFn<T> for &'a M {
@@ -47,4 +52,3 @@ pub trait Seedable {
     /// Getter to retrieve the seed from the function
     fn seed(&self) -> u32;
 }
-

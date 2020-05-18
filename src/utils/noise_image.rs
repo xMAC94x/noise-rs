@@ -1,7 +1,7 @@
+use crate::noisefield::NoiseField;
 use crate::utils::color_gradient::Color;
 #[cfg(feature = "image")]
 use std::{self, path::Path};
-use crate::noisefield::NoiseField;
 
 const RASTER_MAX_WIDTH: u16 = 32_767;
 const RASTER_MAX_HEIGHT: u16 = 32_767;

@@ -3,6 +3,10 @@
 
 use std::ops::{Add, Mul, Sub};
 
+pub(crate) type Vector2<T> = [T; 2];
+pub(crate) type Vector3<T> = [T; 3];
+pub(crate) type Vector4<T> = [T; 4];
+
 /// Cast a numeric type without having to unwrap - we don't expect any overflow
 /// errors...
 #[inline]

@@ -1,4 +1,6 @@
 use crate::noise_fns::NoiseFn;
+use crate::noisefield::NoiseField2D;
+use crate::NoiseFieldFn;
 
 /// Noise function that outputs a checkerboard pattern.
 ///
@@ -59,6 +61,18 @@ impl NoiseFn<[f64; 3]> for Checkerboard {
 impl NoiseFn<[f64; 4]> for Checkerboard {
     fn get(&self, point: [f64; 4]) -> f64 {
         calculate_checkerboard(&point, self.size)
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for Checkerboard {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut output = field.clone();
+
+        for i in 0..output.values.len() {
+            output.values[i] = calculate_checkerboard(output.coordinates[i].as_ref(), self.size)
+        }
+
+        output
     }
 }
 
