@@ -26,8 +26,7 @@ impl<'a, T> Max<'a, T> {
 //     }
 // }
 
-impl<'a> NoiseFieldFn<NoiseField2D> for Max<'a, NoiseField2D>
-{
+impl<'a> NoiseFieldFn<NoiseField2D> for Max<'a, NoiseField2D> {
     fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
         let mut out = self.source1.process_field(field);
         let field2 = self.source2.process_field(field);
@@ -43,8 +42,7 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Max<'a, NoiseField2D>
     }
 }
 
-impl<'a> NoiseFieldFn<NoiseField3D> for Max<'a, NoiseField3D>
-{
+impl<'a> NoiseFieldFn<NoiseField3D> for Max<'a, NoiseField3D> {
     fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
         let mut out = self.source1.process_field(field);
         let field2 = self.source2.process_field(field);

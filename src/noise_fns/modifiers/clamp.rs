@@ -1,17 +1,18 @@
-use crate::{math, noise_fns::NoiseFn};
+use crate::noisefield::{NoiseField2D, NoiseField3D};
+use crate::{math, noise_fns::NoiseFn, NoiseFieldFn};
 
 /// Noise function that clamps the output value from the source function to a
 /// range of values.
 pub struct Clamp<'a, T> {
     /// Outputs a value.
-    pub source: &'a dyn NoiseFn<T>,
+    pub source: &'a dyn NoiseFieldFn<T>,
 
     /// Bound of the clamping range. Default is -1.0 to 1.0.
     pub bounds: (f64, f64),
 }
 
 impl<'a, T> Clamp<'a, T> {
-    pub fn new(source: &'a dyn NoiseFn<T>) -> Self {
+    pub fn new(source: &'a dyn NoiseFieldFn<T>) -> Self {
         Self {
             source,
             bounds: (-1.0, 1.0),
@@ -40,10 +41,38 @@ impl<'a, T> Clamp<'a, T> {
     }
 }
 
-impl<'a, T> NoiseFn<T> for Clamp<'a, T> {
-    fn get(&self, point: T) -> f64 {
-        let value = self.source.get(point);
+// impl<'a, T> NoiseFn<T> for Clamp<'a, T> {
+//     fn get(&self, point: T) -> f64 {
+//         let value = self.source.get(point);
+//
+//         math::clamp(value, self.bounds.0, self.bounds.1)
+//     }
+// }
 
-        math::clamp(value, self.bounds.0, self.bounds.1)
+impl<'a> NoiseFieldFn<NoiseField2D> for Clamp<'a, NoiseField2D> {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = self.source.process_field(field);
+
+        out.values = out
+            .values()
+            .iter()
+            .map(|value| math::clamp(*value, self.bounds.0, self.bounds.1))
+            .collect();
+
+        out
+    }
+}
+
+impl<'a> NoiseFieldFn<NoiseField3D> for Clamp<'a, NoiseField3D> {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut out = self.source.process_field(field);
+
+        out.values = out
+            .values()
+            .iter()
+            .map(|value| math::clamp(*value, self.bounds.0, self.bounds.1))
+            .collect();
+
+        out
     }
 }
