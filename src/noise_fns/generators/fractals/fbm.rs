@@ -1,7 +1,7 @@
 use crate::{math, NoiseFieldFn};
 
 use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
-use crate::noisefield::NoiseField2D;
+use crate::noisefield::{NoiseField2D, NoiseField3D};
 use rayon::prelude::*;
 
 /// Noise function that outputs fBm (fractal Brownian motion) noise.
@@ -213,15 +213,18 @@ impl NoiseFieldFn<NoiseField2D> for Fbm {
     fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
         let mut out = field.clone();
 
-        let mut fields: Vec<NoiseField2D> = Vec::with_capacity(self.octaves);
-
-        for i in 0..self.sources.len() {
-            fields.push(self.sources[i].process_field(field));
-        };
-
-        out.values = out
-            .coordinates
+        let fields: Vec<NoiseField2D> = self
+            .sources
             .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
             .enumerate()
             .map(|(index, point)| {
                 let mut result = 0.0;
@@ -240,6 +243,52 @@ impl NoiseFieldFn<NoiseField2D> for Fbm {
 
                     // Increase the frequency for the next octave.
                     pnt = math::mul2(pnt, self.lacunarity);
+                }
+
+                // Scale and shift the result into the [-1,1] range
+                let scale = 2.0 - self.persistence.powi(self.octaves as i32 - 1);
+                result / scale
+            })
+            .collect();
+
+        out
+    }
+}
+
+impl NoiseFieldFn<NoiseField3D> for Fbm {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField3D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, point)| {
+                let mut result = 0.0;
+
+                let mut point = math::mul3(*point, self.frequency);
+
+                for x in 0..self.octaves {
+                    // Get the signal.
+                    let mut signal = fields[x].value_at_index(index);
+
+                    // Scale the amplitude appropriately for this frequency.
+                    signal *= self.persistence.powi(x as i32);
+
+                    // Add the signal to the result.
+                    result += signal;
+
+                    // Increase the frequency for the next octave.
+                    point = math::mul3(point, self.lacunarity);
                 }
 
                 // Scale and shift the result into the [-1,1] range

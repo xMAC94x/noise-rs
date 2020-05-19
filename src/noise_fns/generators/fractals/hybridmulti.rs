@@ -1,6 +1,7 @@
-use crate::math;
-
 use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
+use crate::noisefield::{NoiseField2D, NoiseField3D};
+use crate::{math, NoiseFieldFn};
+use rayon::prelude::*;
 
 /// Noise function that outputs hybrid Multifractal noise.
 ///
@@ -36,26 +37,46 @@ pub struct HybridMulti {
     /// persistence produces "rougher" noise.
     pub persistence: f64,
 
+    pub gain: f64,
+
     seed: u32,
     sources: Vec<Perlin>,
+    spectral_weights: Vec<f64>,
 }
 
 impl HybridMulti {
     pub const DEFAULT_SEED: u32 = 0;
     pub const DEFAULT_OCTAVES: usize = 6;
-    pub const DEFAULT_FREQUENCY: f64 = 2.0;
-    pub const DEFAULT_LACUNARITY: f64 = std::f64::consts::PI * 2.0 / 3.0;
+    pub const DEFAULT_FREQUENCY: f64 = 1.;
+    pub const DEFAULT_LACUNARITY: f64 = 2.17;
     pub const DEFAULT_PERSISTENCE: f64 = 0.25;
+    pub const DEFAULT_GAIN: f64 = 2.0;
     pub const MAX_OCTAVES: usize = 32;
 
     pub fn new() -> Self {
-        Self {
+        let mut out = Self {
             seed: Self::DEFAULT_SEED,
             octaves: Self::DEFAULT_OCTAVES,
             frequency: Self::DEFAULT_FREQUENCY,
             lacunarity: Self::DEFAULT_LACUNARITY,
             persistence: Self::DEFAULT_PERSISTENCE,
+            gain: Self::DEFAULT_GAIN,
             sources: super::build_sources(Self::DEFAULT_SEED, Self::DEFAULT_OCTAVES),
+            spectral_weights: vec![0.0; Self::DEFAULT_OCTAVES],
+        };
+
+        out.calc_spectral_weights();
+
+        out
+    }
+
+    fn calc_spectral_weights(&mut self) {
+        let h: f64 = 1.0;
+        let mut frequency = self.frequency;
+
+        for i in 0..self.octaves {
+            self.spectral_weights[i] = frequency.powf(-h);
+            frequency *= self.lacunarity;
         }
     }
 }
@@ -73,19 +94,28 @@ impl MultiFractal for HybridMulti {
         }
 
         octaves = math::clamp(octaves, 1, Self::MAX_OCTAVES);
-        Self {
+
+        let mut out = Self {
             octaves,
             sources: super::build_sources(self.seed, octaves),
             ..self
-        }
+        };
+
+        out.calc_spectral_weights();
+
+        out
     }
 
     fn set_frequency(self, frequency: f64) -> Self {
-        Self { frequency, ..self }
+        let mut out = Self { frequency, ..self };
+        out.calc_spectral_weights();
+        out
     }
 
     fn set_lacunarity(self, lacunarity: f64) -> Self {
-        Self { lacunarity, ..self }
+        let mut out = Self { lacunarity, ..self };
+        out.calc_spectral_weights();
+        out
     }
 
     fn set_persistence(self, persistence: f64) -> Self {
@@ -213,5 +243,113 @@ impl NoiseFn<[f64; 4]> for HybridMulti {
 
         // Scale the result to the [-1,1] range
         result * 3.0
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for HybridMulti {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField2D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, _point)| {
+                let offset = 0.0;
+
+                // Get the first octave
+                let mut result = fields[0].value_at_index(0);
+                result += offset;
+                result *= self.spectral_weights[0];
+
+                let mut weight = result;
+
+                // Spectral construction inner loop, where the fractal is built.
+                for octave in 1..self.octaves {
+                    // Prevent divergence.
+                    weight = weight.max(1.0);
+
+                    // Get noise value.
+                    let mut signal = fields[octave].value_at_index(index);
+                    signal += offset;
+                    signal *= self.spectral_weights[octave];
+
+                    // Add it in, weighted by previous octave's noise value.
+                    result += weight * signal;
+
+                    // Update the (monotonically decreasing) weighting value.
+                    // (this is why H must specify a high fractal dimension)
+                    weight *= signal;
+                }
+
+                // Scale the result to the [-1,1] range
+                result * 3.0
+            })
+            .collect();
+
+        out
+    }
+}
+
+impl NoiseFieldFn<NoiseField3D> for HybridMulti {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField3D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, _point)| {
+                let offset = 0.0;
+
+                // Get the first octave
+                let mut result = fields[0].value_at_index(0);
+                result += offset;
+                result *= self.spectral_weights[0];
+
+                let mut weight = result;
+
+                // Spectral construction inner loop, where the fractal is built.
+                for octave in 1..self.octaves {
+                    // Prevent divergence.
+                    weight = weight.max(1.0);
+
+                    // Get noise value.
+                    let mut signal = fields[octave].value_at_index(index);
+                    signal += offset;
+                    signal *= self.spectral_weights[octave];
+
+                    // Add it in, weighted by previous octave's noise value.
+                    result += weight * signal;
+
+                    // Update the (monotonically decreasing) weighting value.
+                    // (this is why H must specify a high fractal dimension)
+                    weight *= signal;
+                }
+
+                // Scale the result to the [-1,1] range
+                result //* 3.0
+            })
+            .collect();
+
+        out
     }
 }

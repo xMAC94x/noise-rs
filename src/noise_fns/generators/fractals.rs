@@ -1,14 +1,14 @@
-// pub use self::basicmulti::*;
-// pub use self::billow::*;
+pub use self::basicmulti::*;
+pub use self::billow::*;
 pub use self::fbm::*;
-// pub use self::hybridmulti::*;
-// pub use self::ridgedmulti::*;
+pub use self::hybridmulti::*;
+pub use self::ridgedmulti::*;
 
-// mod basicmulti;
-// mod billow;
+mod basicmulti;
+mod billow;
 mod fbm;
-// mod hybridmulti;
-// mod ridgedmulti;
+mod hybridmulti;
+mod ridgedmulti;
 
 use crate::noise_fns::{Perlin, Seedable};
 
@@ -26,7 +26,7 @@ pub trait MultiFractal {
 fn build_sources(seed: u32, octaves: usize) -> Vec<Perlin> {
     let mut sources = Vec::with_capacity(octaves);
     for x in 0..octaves {
-        sources.push(Perlin::new().set_seed(seed + (1234234 ^ x) as u32));
+        sources.push(Perlin::new().set_seed(seed + x as u32));
     }
     sources
 }

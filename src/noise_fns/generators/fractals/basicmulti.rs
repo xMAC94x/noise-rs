@@ -1,6 +1,8 @@
-use crate::math;
+use crate::{math, NoiseFieldFn};
 
 use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
+use crate::noisefield::NoiseField2D;
+use rayon::prelude::*;
 
 /// Noise function that outputs heterogenous Multifractal noise.
 ///
@@ -50,7 +52,7 @@ impl BasicMulti {
     pub const DEFAULT_SEED: u32 = 0;
     pub const DEFAULT_OCTAVES: usize = 6;
     pub const DEFAULT_FREQUENCY: f64 = 2.0;
-    pub const DEFAULT_LACUNARITY: f64 = std::f64::consts::PI * 2.0 / 3.0;
+    pub const DEFAULT_LACUNARITY: f64 = 2.0;
     pub const DEFAULT_PERSISTENCE: f64 = 0.5;
     pub const MAX_OCTAVES: usize = 32;
 
@@ -207,5 +209,54 @@ impl NoiseFn<[f64; 4]> for BasicMulti {
 
         // Scale the result to the [-1,1] range.
         result * 0.5
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for BasicMulti {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField2D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, point)| {
+                // First unscaled octave of function; later octaves are scaled.
+                let mut pnt = math::mul2(*point, self.frequency);
+                let mut result = fields[0].value_at_index(index);
+
+                // Spectral construction inner loop, where the fractal is built.
+                for x in 1..self.octaves {
+                    // Raise the spatial frequency.
+                    pnt = math::mul2(pnt, self.lacunarity);
+
+                    // Get noise value.
+                    let mut signal = fields[x].value_at_index(index);
+
+                    // Scale the amplitude appropriately for this frequency.
+                    signal *= self.persistence.powi(x as i32);
+
+                    // Scale the signal by the current 'altitude' of the function.
+                    signal *= result;
+
+                    // Add signal to result.
+                    result += signal;
+                }
+
+                // Scale the result to the [-1,1] range.
+                result * 0.5
+            })
+            .collect();
+
+        out
     }
 }

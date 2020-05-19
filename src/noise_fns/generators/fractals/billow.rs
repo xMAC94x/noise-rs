@@ -1,5 +1,8 @@
 use crate::math::{self, scale_shift};
 use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
+use crate::noisefield::{NoiseField2D, NoiseField3D};
+use crate::NoiseFieldFn;
+use rayon::prelude::*;
 
 /// Noise function that outputs "billowy" noise.
 ///
@@ -46,7 +49,7 @@ impl Billow {
     pub const DEFAULT_SEED: u32 = 0;
     pub const DEFAULT_OCTAVE_COUNT: usize = 6;
     pub const DEFAULT_FREQUENCY: f64 = 1.0;
-    pub const DEFAULT_LACUNARITY: f64 = std::f64::consts::PI * 2.0 / 3.0;
+    pub const DEFAULT_LACUNARITY: f64 = 2.0;
     pub const DEFAULT_PERSISTENCE: f64 = 0.5;
     pub const MAX_OCTAVES: usize = 32;
 
@@ -203,5 +206,103 @@ impl NoiseFn<[f64; 4]> for Billow {
 
         // Scale the result to the [-1,1] range.
         result * 0.5
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for Billow {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField2D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, point)| {
+                let mut result = 0.0;
+
+                let mut point = math::mul2(*point, self.frequency);
+
+                for x in 0..self.octaves {
+                    // Get the signal.
+                    let mut signal = fields[x].value_at_index(index);
+
+                    // Take the abs of the signal, then scale and shift back to
+                    // the [-1,1] range.
+                    signal = scale_shift(signal, 2.0);
+
+                    // Scale the amplitude appropriately for this frequency.
+                    signal *= self.persistence.powi(x as i32);
+
+                    // Add the signal to the result.
+                    result += signal;
+
+                    // Increase the frequency for the next octave.
+                    point = math::mul2(point, self.lacunarity);
+                }
+
+                // Scale the result to the [-1,1] range.
+                result * 0.5
+            })
+            .collect();
+
+        out
+    }
+}
+
+impl NoiseFieldFn<NoiseField3D> for Billow {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField3D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, point)| {
+                let mut result = 0.0;
+
+                let mut point = math::mul3(*point, self.frequency);
+
+                for x in 0..self.octaves {
+                    // Get the signal.
+                    let mut signal = fields[x].value_at_index(index);
+
+                    // Take the abs of the signal, then scale and shift back to
+                    // the [-1,1] range.
+                    signal = scale_shift(signal, 2.0);
+
+                    // Scale the amplitude appropriately for this frequency.
+                    signal *= self.persistence.powi(x as i32);
+
+                    // Add the signal to the result.
+                    result += signal;
+
+                    // Increase the frequency for the next octave.
+                    point = math::mul3(point, self.lacunarity);
+                }
+
+                // Scale the result to the [-1,1] range.
+                result * 0.5
+            })
+            .collect();
+
+        out
     }
 }

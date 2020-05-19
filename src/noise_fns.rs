@@ -1,5 +1,5 @@
 // pub use self::cache::*;
-// pub use self::combiners::*;
+pub use self::combiners::*;
 pub use self::generators::*;
 use crate::noisefield::*;
 // pub use self::modifiers::*;
@@ -7,7 +7,7 @@ use crate::noisefield::*;
 // pub use self::transformers::*;
 
 // mod cache;
-// mod combiners;
+mod combiners;
 mod generators;
 // mod modifiers;
 // mod selectors;

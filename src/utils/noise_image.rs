@@ -1,4 +1,3 @@
-use crate::noisefield::NoiseField;
 use crate::utils::color_gradient::Color;
 #[cfg(feature = "image")]
 use std::{self, path::Path};

@@ -8,27 +8,26 @@ fn main() {
     let perlin = Perlin::new();
 
     PlaneMapBuilder::new(&perlin)
-        .set_size(1000, 1000)
-        .set_x_bounds(-10.0, 10.0)
-        .set_y_bounds(-10.0, 10.0)
         .build()
         .write_to_file("perlin.png");
 
     let perlin = perlin.set_seed(1);
 
     PlaneMapBuilder::new(&perlin)
-        .set_size(1000, 1000)
-        .set_x_bounds(-10.0, 10.0)
-        .set_y_bounds(-10.0, 10.0)
         .build()
         .write_to_file("perlin_seed=1.png");
 
     let perlin = perlin.set_seed(2);
 
     PlaneMapBuilder::new(&perlin)
-        .set_size(1000, 1000)
-        .set_x_bounds(-10.0, 10.0)
-        .set_y_bounds(-10.0, 10.0)
         .build()
         .write_to_file("perlin_seed=2.png");
+
+    CylinderMapBuilder::new(&perlin)
+        .build()
+        .write_to_file("perlin_cylinder.png");
+
+    SphereMapBuilder::new(&perlin)
+        .build()
+        .write_to_file("perlin_sphere.png");
 }

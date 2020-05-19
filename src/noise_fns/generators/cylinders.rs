@@ -1,4 +1,6 @@
 use crate::noise_fns::NoiseFn;
+use crate::noisefield::NoiseField2D;
+use crate::NoiseFieldFn;
 
 /// Noise function that outputs concentric cylinders.
 ///
@@ -46,6 +48,20 @@ impl NoiseFn<[f64; 3]> for Cylinders {
 impl NoiseFn<[f64; 4]> for Cylinders {
     fn get(&self, point: [f64; 4]) -> f64 {
         calculate_cylinders(&point, self.frequency)
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for Cylinders {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = field.clone();
+
+        out.values = field
+            .coordinates()
+            .iter()
+            .map(|point| calculate_cylinders(point, self.frequency))
+            .collect();
+
+        out
     }
 }
 

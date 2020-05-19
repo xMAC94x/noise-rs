@@ -66,13 +66,15 @@ impl NoiseFn<[f64; 4]> for Checkerboard {
 
 impl NoiseFieldFn<NoiseField2D> for Checkerboard {
     fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
-        let mut output = field.clone();
+        let mut out = field.clone();
 
-        for i in 0..output.values.len() {
-            output.values[i] = calculate_checkerboard(output.coordinates[i].as_ref(), self.size)
-        }
+        out.values = field
+            .coordinates()
+            .iter()
+            .map(|point| calculate_checkerboard(point, self.size))
+            .collect();
 
-        output
+        out
     }
 }
 

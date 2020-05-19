@@ -29,7 +29,9 @@ impl Distribution<PermutationTable> for Standard {
         let mut perm_table = PermutationTable {
             values: [0; TABLE_SIZE],
         };
+
         let seq_it = seq.iter();
+
         for (x, y) in perm_table.values.iter_mut().zip(seq_it) {
             *x = *y
         }

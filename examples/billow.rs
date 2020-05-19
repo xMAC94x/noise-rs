@@ -8,4 +8,12 @@ fn main() {
     PlaneMapBuilder::new(&Billow::new())
         .build()
         .write_to_file("billow.png");
+
+    CylinderMapBuilder::new(&Billow::new())
+        .build()
+        .write_to_file("billow-cylinder.png");
+
+    SphereMapBuilder::new(&Billow::new())
+        .build()
+        .write_to_file("billow-sphere.png");
 }

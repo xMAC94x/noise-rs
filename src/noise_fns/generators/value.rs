@@ -1,7 +1,9 @@
+use crate::noisefield::NoiseField2D;
 use crate::{
     math::{self, interpolate},
     noise_fns::{NoiseFn, Seedable},
     permutationtable::PermutationTable,
+    NoiseFieldFn,
 };
 
 /// Noise function that outputs 2/3/4-dimensional Value noise.
@@ -249,5 +251,39 @@ impl NoiseFn<[f64; 4]> for Value {
         let d = interpolate::linear(d0, d1, weight[3]);
 
         d * 2.0 - 1.0
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for Value {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        fn get(perm_table: &PermutationTable, corner: [isize; 2]) -> f64 {
+            perm_table.get2(corner) as f64 / 255.0
+        }
+
+        let mut out = field.clone();
+
+        out.values = field
+            .coordinates()
+            .iter()
+            .map(|point| {
+                let floored = math::map2(*point, f64::floor);
+                let near_corner = math::to_isize2(floored);
+                let far_corner = math::add2(near_corner, math::one2());
+                let weight = math::map2(math::sub2(*point, floored), interpolate::s_curve5);
+
+                let f00 = get(&self.perm_table, [near_corner[0], near_corner[1]]);
+                let f10 = get(&self.perm_table, [far_corner[0], near_corner[1]]);
+                let f01 = get(&self.perm_table, [near_corner[0], far_corner[1]]);
+                let f11 = get(&self.perm_table, [far_corner[0], far_corner[1]]);
+
+                let d0 = interpolate::linear(f00, f10, weight[0]);
+                let d1 = interpolate::linear(f01, f11, weight[0]);
+                let d = interpolate::linear(d0, d1, weight[1]);
+
+                d * 2.0 - 1.0
+            })
+            .collect();
+
+        out
     }
 }

@@ -1,4 +1,4 @@
-use crate::noisefield::NoiseField2D;
+use crate::noisefield::{NoiseField2D, NoiseField3D};
 use crate::{
     gradient, math,
     noise_fns::{NoiseFn, Seedable},
@@ -417,8 +417,8 @@ impl NoiseFieldFn<NoiseField2D> for Perlin {
 
         let mut out = field.clone();
 
-        out.values = out
-            .coordinates
+        out.values = field
+            .coordinates()
             .par_iter()
             .map(|point| {
                 let floored = math::map2(*point, f64::floor);
@@ -450,6 +450,86 @@ impl NoiseFieldFn<NoiseField2D> for Perlin {
 
                 // Multiply by arbitrary value to scale to -1..1
                 math::clamp((f00 + f10 + f01 + f11) * SCALE_FACTOR, -1.0, 1.0)
+            })
+            .collect();
+
+        out
+    }
+}
+
+impl NoiseFieldFn<NoiseField3D> for Perlin {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        const SCALE_FACTOR: f64 = 3.889_855_325_553_107_4;
+
+        #[inline(always)]
+        fn surflet(perm_table: &PermutationTable, corner: [isize; 3], distance: [f64; 3]) -> f64 {
+            let attn = 1.0 - math::dot3(distance, distance);
+            if attn > 0.0 {
+                attn.powi(4) * math::dot3(distance, gradient::get3(perm_table.get3(corner)))
+            } else {
+                0.0
+            }
+        }
+
+        let mut out = field.clone();
+
+        out.values = out
+            .coordinates()
+            .par_iter()
+            .map(|point| {
+                let floored = math::map3(*point, f64::floor);
+                let near_corner = math::to_isize3(floored);
+                let far_corner = math::add3(near_corner, math::one3());
+                let near_distance = math::sub3(*point, floored);
+                let far_distance = math::sub3(near_distance, math::one3());
+
+                let f000 = surflet(
+                    &self.perm_table,
+                    [near_corner[0], near_corner[1], near_corner[2]],
+                    [near_distance[0], near_distance[1], near_distance[2]],
+                );
+                let f100 = surflet(
+                    &self.perm_table,
+                    [far_corner[0], near_corner[1], near_corner[2]],
+                    [far_distance[0], near_distance[1], near_distance[2]],
+                );
+                let f010 = surflet(
+                    &self.perm_table,
+                    [near_corner[0], far_corner[1], near_corner[2]],
+                    [near_distance[0], far_distance[1], near_distance[2]],
+                );
+                let f110 = surflet(
+                    &self.perm_table,
+                    [far_corner[0], far_corner[1], near_corner[2]],
+                    [far_distance[0], far_distance[1], near_distance[2]],
+                );
+                let f001 = surflet(
+                    &self.perm_table,
+                    [near_corner[0], near_corner[1], far_corner[2]],
+                    [near_distance[0], near_distance[1], far_distance[2]],
+                );
+                let f101 = surflet(
+                    &self.perm_table,
+                    [far_corner[0], near_corner[1], far_corner[2]],
+                    [far_distance[0], near_distance[1], far_distance[2]],
+                );
+                let f011 = surflet(
+                    &self.perm_table,
+                    [near_corner[0], far_corner[1], far_corner[2]],
+                    [near_distance[0], far_distance[1], far_distance[2]],
+                );
+                let f111 = surflet(
+                    &self.perm_table,
+                    [far_corner[0], far_corner[1], far_corner[2]],
+                    [far_distance[0], far_distance[1], far_distance[2]],
+                );
+
+                // Multiply by arbitrary value to scale to -1..1
+                math::clamp(
+                    (f000 + f100 + f010 + f110 + f001 + f101 + f011 + f111) * SCALE_FACTOR,
+                    -1.0,
+                    1.0,
+                )
             })
             .collect();
 
