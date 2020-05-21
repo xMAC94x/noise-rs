@@ -1,7 +1,9 @@
+use crate::noisefield::NoiseField2D;
 use crate::{
     math,
     noise_fns::{NoiseFn, Seedable},
     permutationtable::PermutationTable,
+    NoiseFieldFn,
 };
 
 /// Noise function that outputs Worley noise.
@@ -526,5 +528,75 @@ fn get_vec4(index: usize) -> [f64; 4] {
         30 => [ 0.0, -diag,  diag, -diag],
         31 => [ 0.0, -diag, -diag, -diag],
         _ => panic!("Attempt to access 4D gradient {} of 32", index % 32),
+    }
+}
+
+impl NoiseFieldFn<NoiseField2D> for Worley {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        fn get_point(perm_table: &PermutationTable, whole: [isize; 2]) -> [f64; 2] {
+            math::add2(get_vec2(perm_table.get2(whole)), math::to_f64_2(whole))
+        }
+
+        let mut out = field.clone();
+
+        out.values = field
+            .coordinates()
+            .iter()
+            .map(|point| {
+                let point = &math::mul2(*point, self.frequency);
+
+                let cell = math::map2(*point, f64::floor);
+                let whole = math::to_isize2(cell);
+                let fraction = math::sub2(*point, cell);
+
+                let x_half = fraction[0] > 0.5;
+                let y_half = fraction[1] > 0.5;
+
+                let near = [whole[0] + (x_half as isize), whole[1] + (y_half as isize)];
+                let far = [whole[0] + (!x_half as isize), whole[1] + (!y_half as isize)];
+
+                let mut seed_cell = near;
+                let seed_point = get_point(&self.perm_table, near);
+                let mut range = calculate_range(self.range_function, point, &seed_point);
+
+                let x_range = (0.5 - fraction[0]) * (0.5 - fraction[0]); // x-distance squared to center line
+                let y_range = (0.5 - fraction[1]) * (0.5 - fraction[1]); // y-distance squared to center line
+
+                macro_rules! test_point (
+                    [$x:expr, $y:expr] => {
+                        {
+                            let cur_point = get_point(&self.perm_table, [$x, $y]);
+                            let cur_range = calculate_range(self.range_function, point, &cur_point);
+                            if cur_range < range {
+                                range = cur_range;
+                                seed_cell = [$x, $y];
+                            }
+                        }
+                    }
+                );
+
+                if x_range < range {
+                    test_point![far[0], near[1]];
+                }
+
+                if y_range < range {
+                    test_point![near[0], far[1]];
+                }
+
+                if x_range < range && y_range < range {
+                    test_point![far[0], far[1]];
+                }
+
+                let value = if self.enable_range {
+                    range
+                } else {
+                    self.displacement * self.perm_table.get2(seed_cell) as f64 / 255.0
+                };
+
+                value * 2.0 - 1.0
+            })
+            .collect();
+
+        out
     }
 }

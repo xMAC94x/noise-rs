@@ -1,5 +1,7 @@
-use crate::noisefield::{NoiseField, NoiseField2D, NoiseField3D};
-use crate::{NoiseFieldFn, NoiseFn};
+use crate::{
+    noisefield::{NoiseField2D, NoiseField3D},
+    NoiseFieldFn, NoiseFn,
+};
 
 /// Noise function that outputs the sum of the two output values from two source
 /// functions.
@@ -26,10 +28,7 @@ impl<'a, T> Add<'a, T> {
 //     }
 // }
 
-impl<'a> NoiseFieldFn<NoiseField2D> for Add<'a, NoiseField2D>
-// where
-//     T: NoiseField,
-{
+impl<'a> NoiseFieldFn<NoiseField2D> for Add<'a, NoiseField2D> {
     fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
         let mut out = self.source1.process_field(field);
         let field2 = self.source2.process_field(field);
@@ -45,10 +44,7 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Add<'a, NoiseField2D>
     }
 }
 
-impl<'a> NoiseFieldFn<NoiseField3D> for Add<'a, NoiseField3D>
-// where
-//     T: NoiseField,
-{
+impl<'a> NoiseFieldFn<NoiseField3D> for Add<'a, NoiseField3D> {
     fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
         let mut out = self.source1.process_field(field);
         let field2 = self.source2.process_field(field);

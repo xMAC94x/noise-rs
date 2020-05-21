@@ -1,6 +1,6 @@
 use crate::math::{self, scale_shift};
 use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
-use crate::noisefield::NoiseField2D;
+use crate::noisefield::{NoiseField2D, NoiseField3D};
 use crate::NoiseFieldFn;
 use rayon::prelude::*;
 
@@ -117,6 +117,7 @@ impl MultiFractal for RidgedMulti {
         let mut out = Self {
             octaves,
             sources: super::build_sources(self.seed, octaves),
+            spectral_weights: vec![0.0; octaves],
             ..self
         };
 
@@ -341,6 +342,82 @@ impl NoiseFieldFn<NoiseField2D> for RidgedMulti {
                 for current_octave in 1..self.octaves {
                     // Increase the frequency.
                     point = math::mul2(point, self.lacunarity);
+
+                    // Weight successive contributions by the previous signal.
+                    // weight = signal / self.attenuation;
+                    weight = signal * self.gain;
+
+                    // Clamp the weight to [0,1] to prevent the result from diverging.
+                    weight = math::clamp(weight, 0.0, 1.0);
+
+                    // Get the value.
+                    let mut signal = fields[current_octave].value_at_index(index);
+
+                    // Make the ridges.
+                    signal = signal.abs();
+                    signal = 1.0 - signal;
+
+                    // Square the signal to increase the sharpness of the ridges.
+                    signal *= signal;
+
+                    // Apply the weighting from the previous octave to the signal.
+                    // Larger values have higher weights, producing sharp points along
+                    // the ridges.
+                    signal *= weight;
+
+                    // Add the signal to the output value.
+                    result += signal * self.spectral_weights[current_octave];
+                }
+
+                // Scale and shift the result into the [-1,1] range
+                let scale = 2.0 - 0.5_f64.powi(self.octaves as i32 - 1);
+                scale_shift(result, 2.0 / scale)
+            })
+            .collect();
+
+        out
+    }
+}
+
+impl NoiseFieldFn<NoiseField3D> for RidgedMulti {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut out = field.clone();
+
+        let fields: Vec<NoiseField3D> = self
+            .sources
+            .iter()
+            .enumerate()
+            .map(|(index, source)| {
+                source.process_field(&out.scale_coordinates(self.lacunarity.powi(index as i32)))
+            })
+            .collect();
+
+        out.values = field
+            .coordinates()
+            .par_iter()
+            .enumerate()
+            .map(|(index, point)| {
+                let offset = 1.0;
+
+                let mut point = math::mul3(*point, self.frequency);
+
+                // Do first octave
+                let mut signal = fields[0].value_at_index(index);
+
+                // Invert and translate (note that offset should be ~1.0)
+                signal = signal.abs();
+                signal = offset - signal;
+
+                // Square the signal, to increase the sharpness of ridges
+                signal *= signal;
+
+                // Assign the initial values
+                let mut result = signal;
+                let mut weight;
+
+                for current_octave in 1..self.octaves {
+                    // Increase the frequency.
+                    point = math::mul3(point, self.lacunarity);
 
                     // Weight successive contributions by the previous signal.
                     // weight = signal / self.attenuation;

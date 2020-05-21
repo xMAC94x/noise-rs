@@ -1,6 +1,9 @@
+use crate::noisefield::NoiseField3D;
 use crate::{
     math::{clamp, interpolate},
     noise_fns::NoiseFn,
+    noisefield::NoiseField2D,
+    NoiseFieldFn,
 };
 
 /// Noise function that maps the output value from the source function onto a
@@ -28,7 +31,7 @@ use crate::{
 /// stereotypical desert canyon.
 pub struct Terrace<'a, T> {
     /// Outputs a value.
-    pub source: &'a dyn NoiseFn<T>,
+    pub source: &'a dyn NoiseFieldFn<T>,
 
     /// Determines if the terrace-forming curve between all control points is
     /// inverted.
@@ -39,7 +42,7 @@ pub struct Terrace<'a, T> {
 }
 
 impl<'a, T> Terrace<'a, T> {
-    pub fn new(source: &'a dyn NoiseFn<T>) -> Self {
+    pub fn new(source: &'a dyn NoiseFieldFn<T>) -> Self {
         Terrace {
             source,
             invert_terraces: false,
@@ -87,50 +90,158 @@ impl<'a, T> Terrace<'a, T> {
     }
 }
 
-impl<'a, T> NoiseFn<T> for Terrace<'a, T> {
-    fn get(&self, point: T) -> f64 {
+// impl<'a, T> NoiseFn<T> for Terrace<'a, T> {
+//     fn get(&self, point: T) -> f64 {
+//         // confirm that there's at least 2 control points in the vector.
+//         assert!(self.control_points.len() >= 2);
+//
+//         // get output value from the source function
+//         let source_value = self.source.get(point);
+//
+//         // Find the first element in the control point array that has a input
+//         // value larger than the output value from the source function
+//         let index_pos = self
+//             .control_points
+//             .iter()
+//             .position(|&x| x >= source_value)
+//             .unwrap_or_else(|| self.control_points.len());
+//
+//         // Find the two nearest control points so that we can map their values
+//         // onto a quadratic curve.
+//         let index0 = clamp_index(index_pos as isize - 1, 0, self.control_points.len() - 1);
+//         let index1 = clamp_index(index_pos as isize, 0, self.control_points.len() - 1);
+//
+//         // If some control points are missing (which occurs if the value from
+//         // the source function is greater than the largest input value or less
+//         // than the smallest input value of the control point array), get the
+//         // corresponding output value of the nearest control point and exit.
+//         if index0 == index1 {
+//             return self.control_points[index1];
+//         }
+//
+//         // Compute the alpha value used for cubic interpolation
+//         let mut input0 = self.control_points[index0];
+//         let mut input1 = self.control_points[index1];
+//         let mut alpha = (source_value - input0) / (input1 - input0);
+//
+//         if self.invert_terraces {
+//             alpha = 1.0 - alpha;
+//             std::mem::swap(&mut input0, &mut input1);
+//         }
+//
+//         // Squaring the alpha produces the terrace effect.
+//         alpha *= alpha;
+//
+//         // Now perform the cubic interpolation and return.
+//         interpolate::linear(input0, input1, alpha)
+//     }
+// }
+
+impl<'a> NoiseFieldFn<NoiseField2D> for Terrace<'a, NoiseField2D> {
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = self.source.process_field(field);
+
         // confirm that there's at least 2 control points in the vector.
         assert!(self.control_points.len() >= 2);
 
-        // get output value from the source function
-        let source_value = self.source.get(point);
-
-        // Find the first element in the control point array that has a input
-        // value larger than the output value from the source function
-        let index_pos = self
-            .control_points
+        out.values = out
+            .values()
             .iter()
-            .position(|&x| x >= source_value)
-            .unwrap_or_else(|| self.control_points.len());
+            .map(|value| {
+                // Find the first element in the control point array that has a input
+                // value larger than the output value from the source function
+                let index_pos = self
+                    .control_points
+                    .iter()
+                    .position(|&x| x >= *value)
+                    .unwrap_or_else(|| self.control_points.len());
 
-        // Find the two nearest control points so that we can map their values
-        // onto a quadratic curve.
-        let index0 = clamp_index(index_pos as isize - 1, 0, self.control_points.len() - 1);
-        let index1 = clamp_index(index_pos as isize, 0, self.control_points.len() - 1);
+                // Find the two nearest control points so that we can map their values
+                // onto a quadratic curve.
+                let index0 = clamp_index(index_pos as isize - 1, 0, self.control_points.len() - 1);
+                let index1 = clamp_index(index_pos as isize, 0, self.control_points.len() - 1);
 
-        // If some control points are missing (which occurs if the value from
-        // the source function is greater than the largest input value or less
-        // than the smallest input value of the control point array), get the
-        // corresponding output value of the nearest control point and exit.
-        if index0 == index1 {
-            return self.control_points[index1];
-        }
+                // If some control points are missing (which occurs if the value from
+                // the source function is greater than the largest input value or less
+                // than the smallest input value of the control point array), get the
+                // corresponding output value of the nearest control point and exit.
+                if index0 == index1 {
+                    return self.control_points[index1];
+                }
 
-        // Compute the alpha value used for cubic interpolation
-        let mut input0 = self.control_points[index0];
-        let mut input1 = self.control_points[index1];
-        let mut alpha = (source_value - input0) / (input1 - input0);
+                // Compute the alpha value used for cubic interpolation
+                let mut input0 = self.control_points[index0];
+                let mut input1 = self.control_points[index1];
+                let mut alpha = (*value - input0) / (input1 - input0);
 
-        if self.invert_terraces {
-            alpha = 1.0 - alpha;
-            std::mem::swap(&mut input0, &mut input1);
-        }
+                if self.invert_terraces {
+                    alpha = 1.0 - alpha;
+                    std::mem::swap(&mut input0, &mut input1);
+                }
 
-        // Squaring the alpha produces the terrace effect.
-        alpha *= alpha;
+                // Squaring the alpha produces the terrace effect.
+                alpha *= alpha;
 
-        // Now perform the cubic interpolation and return.
-        interpolate::linear(input0, input1, alpha)
+                // Now perform the cubic interpolation and return.
+                interpolate::linear(input0, input1, alpha)
+            })
+            .collect();
+
+        out
+    }
+}
+
+impl<'a> NoiseFieldFn<NoiseField3D> for Terrace<'a, NoiseField3D> {
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut out = self.source.process_field(field);
+
+        // confirm that there's at least 2 control points in the vector.
+        assert!(self.control_points.len() >= 2);
+
+        out.values = out
+            .values()
+            .iter()
+            .map(|value| {
+                // Find the first element in the control point array that has a input
+                // value larger than the output value from the source function
+                let index_pos = self
+                    .control_points
+                    .iter()
+                    .position(|&x| x >= *value)
+                    .unwrap_or_else(|| self.control_points.len());
+
+                // Find the two nearest control points so that we can map their values
+                // onto a quadratic curve.
+                let index0 = clamp_index(index_pos as isize - 1, 0, self.control_points.len() - 1);
+                let index1 = clamp_index(index_pos as isize, 0, self.control_points.len() - 1);
+
+                // If some control points are missing (which occurs if the value from
+                // the source function is greater than the largest input value or less
+                // than the smallest input value of the control point array), get the
+                // corresponding output value of the nearest control point and exit.
+                if index0 == index1 {
+                    return self.control_points[index1];
+                }
+
+                // Compute the alpha value used for cubic interpolation
+                let mut input0 = self.control_points[index0];
+                let mut input1 = self.control_points[index1];
+                let mut alpha = (*value - input0) / (input1 - input0);
+
+                if self.invert_terraces {
+                    alpha = 1.0 - alpha;
+                    std::mem::swap(&mut input0, &mut input1);
+                }
+
+                // Squaring the alpha produces the terrace effect.
+                alpha *= alpha;
+
+                // Now perform the cubic interpolation and return.
+                interpolate::linear(input0, input1, alpha)
+            })
+            .collect();
+
+        out
     }
 }
 

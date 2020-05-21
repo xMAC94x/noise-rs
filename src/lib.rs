@@ -17,6 +17,6 @@ pub use crate::noise_fns::*;
 mod gradient;
 mod math;
 mod noise_fns;
-mod noisefield;
+pub mod noisefield;
 mod permutationtable;
 pub mod utils;

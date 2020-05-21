@@ -1,5 +1,8 @@
-use crate::noisefield::{NoiseField2D, NoiseField3D};
-use crate::{math, noise_fns::NoiseFn, NoiseFieldFn};
+use crate::{
+    math,
+    noisefield::{NoiseField2D, NoiseField3D},
+    NoiseFieldFn, NoiseFn,
+};
 
 /// Noise function that clamps the output value from the source function to a
 /// range of values.

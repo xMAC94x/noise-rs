@@ -6,7 +6,7 @@ pub use self::fractals::*;
 pub use self::perlin::*;
 // pub use self::super_simplex::*;
 pub use self::value::*;
-// pub use self::worley::*;
+pub use self::worley::*;
 
 mod checkerboard;
 mod constant;
@@ -16,4 +16,4 @@ mod fractals;
 mod perlin;
 // mod super_simplex;
 mod value;
-// mod worley;
+mod worley;

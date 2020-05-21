@@ -1,6 +1,7 @@
-use crate::noise_fns::NoiseFn;
-use crate::noisefield::{NoiseField2D, NoiseField3D};
-use crate::NoiseFieldFn;
+use crate::{
+    noisefield::{NoiseField2D, NoiseField3D},
+    NoiseFieldFn, NoiseFn,
+};
 
 /// Noise function that raises the output value from the first source function
 /// to the power of the output value of the second source function.

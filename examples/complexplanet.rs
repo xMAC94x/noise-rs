@@ -262,7 +262,8 @@ fn main() {
 
     // 7: [Base-continent-definition subgroup]: Caches the output value from
     // the clamped-continent module.
-    let baseContinentDef = Cache::new(baseContinentDef_cl);
+    // let baseContinentDef = Cache::new(baseContinentDef_cl);
+    let baseContinentDef = baseContinentDef_cl;
 
     //    debug::render_noise_module("complexplanet_images/00_5_baseContinentDef.png",
     //                               &baseContinentDef,
@@ -302,7 +303,7 @@ fn main() {
     // output value from the coarse-turbulence module. This turbulence has a
     // higher frequency, but lower power, than the coarse-turbulence module,
     // adding some intermediate detail to it.
-    let continentDef_tu1 = Turbulence::new(continentDef_tu0)
+    let continentDef_tu1 = Turbulence::new(&continentDef_tu0)
         .set_seed(CURRENT_SEED + 11)
         .set_frequency(CONTINENT_FREQUENCY * 47.25)
         .set_power(CONTINENT_FREQUENCY / 433.75)
@@ -318,7 +319,7 @@ fn main() {
     // warps the output value from the intermediate-turbulence module. This
     // turbulence has a higher frequency, but lower power, than the
     // intermediate-turbulence module, adding some fine detail to it.
-    let continentDef_tu2 = Turbulence::new(continentDef_tu1)
+    let continentDef_tu2 = Turbulence::new(&continentDef_tu1)
         .set_seed(CURRENT_SEED + 12)
         .set_frequency(CONTINENT_FREQUENCY * 95.25)
         .set_power(CONTINENT_FREQUENCY / 1019.75)
@@ -353,7 +354,8 @@ fn main() {
     // 5: [Continent-definition group]: Caches the output value from the
     // clamped-continent module. This is the output value for the entire
     // continent-definition group.
-    let continentDef = Cache::new(continentDef_se);
+    // let continentDef = Cache::new(continentDef_se);
+    let continentDef = continentDef_se;
 
     //    debug::render_noise_module("complexplanet_images/01_4_continentDef.png",
     //                               &continentDef,
@@ -405,7 +407,8 @@ fn main() {
     // 3: [Terrain-type-definition group]: Caches the output value from the
     // roughness-probability-shift module. This is the output value for the
     // entire terrain-type-definition group.
-    let terrainTypeDef = Cache::new(terrainTypeDef_te);
+    // let terrainTypeDef = Cache::new(terrainTypeDef_te);
+    let terrainTypeDef = terrainTypeDef_te;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function group: mountainous terrain
@@ -479,7 +482,7 @@ fn main() {
     // 7: [Coarse-turbulence module]: This turbulence module warps the output
     // value from the mountain-and-valleys module, adding some coarse detail to
     // it.
-    let mountainBaseDef_tu0 = Turbulence::new(mountainBaseDef_bl)
+    let mountainBaseDef_tu0 = Turbulence::new(&mountainBaseDef_bl)
         .set_seed(CURRENT_SEED + 32)
         .set_frequency(1337.0)
         .set_power(1.0 / 6730.0 * MOUNTAINS_TWIST)
@@ -489,7 +492,7 @@ fn main() {
     // the output value from the coarse-turbulence module. This turbulence has
     // a higher frequency, but lower power, than the coarse-turbulence module,
     // adding some fine detail to it.
-    let mountainBaseDef_tu1 = Turbulence::new(mountainBaseDef_tu0)
+    let mountainBaseDef_tu1 = Turbulence::new(&mountainBaseDef_tu0)
         .set_seed(CURRENT_SEED + 33)
         .set_frequency(21221.0)
         .set_power(1.0 / 120157.0 * MOUNTAINS_TWIST)
@@ -497,7 +500,8 @@ fn main() {
 
     // 9: [Mountain-base-definition subgroup]: Caches the output value from the
     // warped-mountains-and-valleys module.
-    let mountainBaseDef = Cache::new(mountainBaseDef_tu1);
+    // let mountainBaseDef = Cache::new(mountainBaseDef_tu1);
+    let mountainBaseDef = mountainBaseDef_tu1;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function subgroup: high mountainous terrain (5 noise functions)
@@ -536,7 +540,7 @@ fn main() {
 
     // 4: [Warped-high-mountains module]: This turbulence module warps the
     // output value from the high-mountains module, adding some detail to it.
-    let mountainousHigh_tu = Turbulence::new(mountainousHigh_ma)
+    let mountainousHigh_tu = Turbulence::new(&mountainousHigh_ma)
         .set_seed(CURRENT_SEED + 42)
         .set_frequency(31511.0)
         .set_power(1.0 / 180371.0 * MOUNTAINS_TWIST)
@@ -544,7 +548,8 @@ fn main() {
 
     // 5: [High-mountainous-terrain subgroup]: Caches the output value from the
     // warped-high-mountains module.
-    let mountainousHigh = Cache::new(mountainousHigh_tu);
+    // let mountainousHigh = Cache::new(mountainousHigh_tu);
+    let mountainousHigh = mountainousHigh_tu;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function subgroup: low mountainous terrain (4 noise functions)
@@ -585,7 +590,8 @@ fn main() {
 
     // 4: [Low-mountainous-terrain subgroup]: Caches the output value from the
     // low-mountainous-terrain module.
-    let mountainousLow = Cache::new(mountainousLow_mu);
+    // let mountainousLow = Cache::new(mountainousLow_mu);
+    let mountainousLow = mountainousLow_mu;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function subgroup: mountainous terrain (7 noise functions)
@@ -657,7 +663,8 @@ fn main() {
     let mountainousTerrain_ex =
         Exponent::new(&mountainousTerrain_sb2).set_exponent(MOUNTAIN_GLACIATION);
 
-    let mountainousTerrain = Cache::new(mountainousTerrain_ex);
+    // let mountainousTerrain = Cache::new(mountainousTerrain_ex);
+    let mountainousTerrain = mountainousTerrain_ex;
 
     // ////////////////////////////////////////////////////////////////////////
     // Function group: hilly terrain
@@ -739,7 +746,7 @@ fn main() {
     // 9: [Coarse-turbulence module]: This turbulence module warps the output
     // value from the increased-slope-hilly-terrain module, adding some
     // coarse detail to it.
-    let hillyTerrain_tu0 = Turbulence::new(hillyTerrain_ex)
+    let hillyTerrain_tu0 = Turbulence::new(&hillyTerrain_ex)
         .set_seed(CURRENT_SEED + 62)
         .set_frequency(1531.0)
         .set_power(1.0 / 16921.0 * HILLS_TWIST)
@@ -749,7 +756,7 @@ fn main() {
     // output value from the coarse-turbulence module. This turbulence has a
     // higher frequency, but lower power, than the coarse-turbulence module,
     // adding some fine detail to it.
-    let hillyTerrain_tu1 = Turbulence::new(hillyTerrain_tu0)
+    let hillyTerrain_tu1 = Turbulence::new(&hillyTerrain_tu0)
         .set_seed(CURRENT_SEED + 63)
         .set_frequency(21617.0)
         .set_power(1.0 / 117529.0 * HILLS_TWIST)
@@ -758,7 +765,8 @@ fn main() {
     // 11: [Hilly-terrain group]: Caches the output value from the warped-hilly-
     // terrain module. This is the output value for the entire hilly-terrain
     // group.
-    let hillyTerrain = Cache::new(hillyTerrain_tu1);
+    // let hillyTerrain = Cache::new(hillyTerrain_tu1);
+    let hillyTerrain = hillyTerrain_tu1;
 
     // ////////////////////////////////////////////////////////////////////////
     // Function group: plains terrain
@@ -825,7 +833,8 @@ fn main() {
     // 7: [Plains-terrain group]: Caches the output value from the rescaled-
     // plains-basis module.  This is the output value for the entire plains-
     // terrain group.
-    let plainsTerrain = Cache::new(plainsTerrain_sb2);
+    // let plainsTerrain = Cache::new(plainsTerrain_sb2);
+    let plainsTerrain = plainsTerrain_sb2;
 
     // ////////////////////////////////////////////////////////////////////////
     // Function group: badlands terrain
@@ -880,7 +889,8 @@ fn main() {
 
     // 6: [Badlands-sand subgroup]: Caches the output value from the dunes-with-
     // detail module.
-    let badlandsSand = Cache::new(badlandsSand_ad);
+    // let badlandsSand = Cache::new(badlandsSand_ad);
+    let badlandsSand = badlandsSand_ad;
 
     // ////////////////////////////////////////////////////////////////////////
     // Function subgroup: badlands cliffs (7 noise functions)
@@ -932,7 +942,7 @@ fn main() {
 
     // 5: [Coarse-turbulence module]: This turbulence module warps the output
     // value from the terraced-cliffs module, adding some coarse detail to it.
-    let badlandsCliffs_tu0 = Turbulence::new(badlandsCliffs_te)
+    let badlandsCliffs_tu0 = Turbulence::new(&badlandsCliffs_te)
         .set_seed(CURRENT_SEED + 91)
         .set_frequency(16111.0)
         .set_power(1.0 / 141539.0 * BADLANDS_TWIST)
@@ -942,7 +952,7 @@ fn main() {
     // from the coarse-turbulence module. This turbulence has a higher
     // frequency, but lower power, than the coarse-turbulence module, adding
     // some fine detail to it.
-    let badlandsCliffs_tu1 = Turbulence::new(badlandsCliffs_tu0)
+    let badlandsCliffs_tu1 = Turbulence::new(&badlandsCliffs_tu0)
         .set_seed(CURRENT_SEED + 92)
         .set_frequency(36107.0)
         .set_power(1.0 / 211543.0 * BADLANDS_TWIST)
@@ -950,7 +960,8 @@ fn main() {
 
     // 7: [Badlands-cliffs subgroup]: Caches the output value from the warped-
     // cliffs module.
-    let badlandsCliffs = Cache::new(badlandsCliffs_tu1);
+    // let badlandsCliffs = Cache::new(badlandsCliffs_tu1);
+    let badlandsCliffs = badlandsCliffs_tu1;
 
     // ////////////////////////////////////////////////////////////////////////
     // Function subgroup: badlands terrain (3 noise functions)
@@ -983,7 +994,8 @@ fn main() {
     // 3: [Badlands-terrain group]: Caches the output value from the dunes-and-
     // cliffs module. This is the output value for the entire badlands-terrain
     // group.
-    let badlandsTerrain = Cache::new(badlandsTerrain_ma);
+    // let badlandsTerrain = Cache::new(badlandsTerrain_ma);
+    let badlandsTerrain = badlandsTerrain_ma;
 
     //    debug::render_noise_module("complexplanet_images/12_2_badlandsTerrain.png",
     //                               &badlandsTerrain,
@@ -1055,7 +1067,7 @@ fn main() {
     // 6: [Warped-rivers module]: This turbulence module warps the output value
     //    from the combined-rivers module, which twists the rivers.  The high
     //    roughness produces less-smooth rivers.
-    let riverPositions_tu = Turbulence::new(riverPositions_mi)
+    let riverPositions_tu = Turbulence::new(&riverPositions_mi)
         .set_seed(CURRENT_SEED + 102)
         .set_frequency(9.25)
         .set_power(1.0 / 57.75)
@@ -1064,7 +1076,8 @@ fn main() {
     // 7: [River-positions group]: Caches the output value from the warped-
     //    rivers module.  This is the output value for the entire river-
     //    positions group.
-    let riverPositions = Cache::new(riverPositions_tu);
+    // let riverPositions = Cache::new(riverPositions_tu);
+    let riverPositions = riverPositions_tu;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function group: scaled mountainous terrain
@@ -1131,7 +1144,8 @@ fn main() {
     // 6: [Scaled-mountainous-terrain group]: Caches the output value from the
     // peak-height-multiplier module.  This is the output value for the
     // entire scaled-mountainous-terrain group.
-    let scaledMountainousTerrain = Cache::new(scaledMountainousTerrain_mu);
+    // let scaledMountainousTerrain = Cache::new(scaledMountainousTerrain_mu);
+    let scaledMountainousTerrain = scaledMountainousTerrain_mu;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function group: scaled hilly terrain
@@ -1197,7 +1211,8 @@ fn main() {
     // 6: [Scaled-hilly-terrain group]: Caches the output value from the
     // hilltop-height-multiplier module. This is the output value for the entire
     // scaled-hilly-terrain group.
-    let scaledHillyTerrain = Cache::new(scaledHillyTerrain_mu);
+    // let scaledHillyTerrain = Cache::new(scaledHillyTerrain_mu);
+    let scaledHillyTerrain = scaledHillyTerrain_mu;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function group: scaled plains terrain
@@ -1230,7 +1245,8 @@ fn main() {
     // 2: [Scaled-plains-terrain group]: Caches the output value from the
     // scaled-plains-terrain module. This is the output value for the entire
     // scaled-plains-terrain group.
-    let scaledPlainsTerrain = Cache::new(scaledPlainsTerrain_sb0);
+    // let scaledPlainsTerrain = Cache::new(scaledPlainsTerrain_sb0);
+    let scaledPlainsTerrain = scaledPlainsTerrain_sb0;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function group: scaled badlands terrain
@@ -1263,7 +1279,8 @@ fn main() {
     // 2: [Scaled-badlands-terrain group]: Caches the output value from the
     // scaled-badlands-terrain module. This is the output value for the
     // entire scaled-badlands-terrain group.
-    let scaledBadlandsTerrain = Cache::new(scaledBadlandsTerrain_sb);
+    // let scaledBadlandsTerrain = Cache::new(scaledBadlandsTerrain_sb);
+    let scaledBadlandsTerrain = scaledBadlandsTerrain_sb;
 
     //    debug::render_noise_module("complexplanet_images/17_0_scaledBadlandsTerrain\
     //    .png",
@@ -1356,7 +1373,8 @@ fn main() {
 
     // 6: [Continental-shelf subgroup]: Caches the output value from the shelf-
     //    and-trenches module.
-    let continentalShelf = Cache::new(continentalShelf_ad);
+    // let continentalShelf = Cache::new(continentalShelf_ad);
+    let continentalShelf = continentalShelf_ad;
 
     //    debug::render_noise_module("complexplanet_images/18_4_continentalShelf.png",
     //                               &continentalShelf,
@@ -1402,7 +1420,8 @@ fn main() {
 
     // 3: [Base-continent-elevation subgroup]: Caches the output value from the
     // base-continent-with-oceans module.
-    let baseContinentElev = Cache::new(baseContinentElev_se);
+    // let baseContinentElev = Cache::new(baseContinentElev_se);
+    let baseContinentElev = baseContinentElev_se;
 
     //    debug::render_noise_module("complexplanet_images/19_1_baseContinentElev\
     //    .png",
@@ -1428,7 +1447,8 @@ fn main() {
 
     // 2: [Continents-with-plains subgroup]: Caches the output value from the
     // continents-with-plains module.
-    let continentsWithPlains = Cache::new(continentsWithPlains_ad);
+    // let continentsWithPlains = Cache::new(continentsWithPlains_ad);
+    let continentsWithPlains = continentsWithPlains_ad;
 
     //    debug::render_noise_module("complexplanet_images/20_0_continentsWithPlains\
     //    .png",
@@ -1474,7 +1494,8 @@ fn main() {
 
     // 3: [Continents-with-hills subgroup]: Caches the output value from the
     // select-high-elevations module.
-    let continentsWithHills = Cache::new(continentsWithHills_se);
+    // let continentsWithHills = Cache::new(continentsWithHills_se);
+    let continentsWithHills = continentsWithHills_se;
 
     //    debug::render_noise_module("complexplanet_images/21_1_continentsWithHills\
     //    .png",
@@ -1551,7 +1572,8 @@ fn main() {
 
     // 5: [Continents-with-mountains subgroup]: Caches the output value from the
     // select-high-elevations module.
-    let continentsWithMountains = Cache::new(continentsWithMountains_se);
+    // let continentsWithMountains = Cache::new(continentsWithMountains_se);
+    let continentsWithMountains = continentsWithMountains_se;
 
     //    debug::render_noise_module("complexplanet_images/22_3_continentsWithMountains.png",
     //                               &continentsWithMountains,
@@ -1630,7 +1652,8 @@ fn main() {
 
     // 5: [Continents-with-badlands subgroup]: Caches the output value from the
     //    apply-badlands module.
-    let continentsWithBadlands = Cache::new(continentsWithBadlands_ma);
+    // let continentsWithBadlands = Cache::new(continentsWithBadlands_ma);
+    let continentsWithBadlands = continentsWithBadlands_ma;
 
     //    debug::render_noise_module("complexplanet_images/23_3_continentsWithBadlands.png",
     //                               &continentsWithBadlands,
@@ -1691,7 +1714,8 @@ fn main() {
 
     // 4: [Continents-with-rivers subgroup]: Caches the output value from the
     // blended-rivers-to-continents module.
-    let continentsWithRivers = Cache::new(continentsWithRivers_se);
+    // let continentsWithRivers = Cache::new(continentsWithRivers_se);
+    let continentsWithRivers = continentsWithRivers_se;
 
     // /////////////////////////////////////////////////////////////////////////
     // Function subgroup: unscaled final planet (1 noise function)
@@ -1702,7 +1726,8 @@ fn main() {
 
     // 1: [Unscaled-final-planet subgroup]: Caches the output value from the
     //    continent-with-rivers subgroup.
-    let unscaledFinalPlanet = Cache::new(continentsWithRivers);
+    // let unscaledFinalPlanet = Cache::new(continentsWithRivers);
+    let unscaledFinalPlanet = continentsWithRivers;
 
     //    debug::render_noise_module3(
     //        "complexplanet_images/30_0_unscaledFinalPlanet\

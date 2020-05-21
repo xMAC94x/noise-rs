@@ -1,6 +1,7 @@
 extern crate noise;
 
 use noise::{utils::*, RangeFunction, Worley};
+use std::ops::Range;
 
 fn main() {
     PlaneMapBuilder::new(&Worley::new())
@@ -27,7 +28,7 @@ fn main() {
         .build()
         .write_to_file("worley_manhattan.png");
 
-    PlaneMapBuilder::new(&Worley::new().enable_range(true))
+    PlaneMapBuilder::new(&Worley::new().set_range_function(RangeFunction::Manhattan).enable_range(true))
         .build()
         .write_to_file("worley_manhattan_range.png");
 

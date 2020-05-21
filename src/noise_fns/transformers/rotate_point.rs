@@ -1,4 +1,7 @@
-use crate::noise_fns::NoiseFn;
+use crate::{
+    noisefield::{NoiseField2D, NoiseField3D},
+    NoiseFieldFn, NoiseFn,
+};
 
 /// Noise function that rotates the input value around the origin before
 /// returning the output value from the source function.
@@ -138,5 +141,78 @@ where
     fn get(&self, _point: [f64; 4]) -> f64 {
         // 4d rotations are hard.
         unimplemented!();
+    }
+}
+
+impl<Source> NoiseFieldFn<NoiseField2D> for RotatePoint<Source>
+where
+    Source: NoiseFieldFn<NoiseField2D>,
+{
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut temp = field.clone();
+
+        // In two dimensions, the plane is _xy_, and we rotate around the
+        // z-axis.
+        let theta = self.z_angle.to_radians();
+
+        temp.coordinates = field
+            .coordinates()
+            .iter()
+            .map(|[x, y]| {
+                let x2 = x * theta.cos() - y * theta.sin();
+                let y2 = x * theta.sin() + y * theta.cos();
+
+                // set the offset input value instead of the original input value.
+                [x2, y2]
+            })
+            .collect();
+
+        self.source.process_field(&temp)
+    }
+}
+
+impl<Source> NoiseFieldFn<NoiseField3D> for RotatePoint<Source>
+where
+    Source: NoiseFieldFn<NoiseField3D>,
+{
+    fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
+        let mut temp = field.clone();
+
+        // In two dimensions, the plane is _xy_, and we rotate around the
+        // z-axis.
+        let x_cos = self.x_angle.to_radians().cos();
+        let y_cos = self.y_angle.to_radians().cos();
+        let z_cos = self.z_angle.to_radians().cos();
+        let x_sin = self.x_angle.to_radians().sin();
+        let y_sin = self.y_angle.to_radians().sin();
+        let z_sin = self.z_angle.to_radians().sin();
+
+        let x1 = x_sin * y_sin * z_sin + y_cos * z_cos;
+        let y1 = x_cos * z_sin;
+        let z1 = y_sin * z_cos - y_cos * x_sin * z_sin;
+        let x2 = y_sin * x_sin * z_cos - y_cos * z_sin;
+        let y2 = x_cos * z_cos;
+        let z2 = -y_cos * x_sin * z_cos - y_sin * z_sin;
+        let x3 = -y_sin * x_cos;
+        let y3 = x_sin;
+        let z3 = y_cos * x_cos;
+
+        temp.coordinates = field
+            .coordinates()
+            .iter()
+            .map(|point| {
+                // In three dimensions, we could rotate around any of the x, y, or z
+                // axes. Need a more complicated function to handle this case.
+                let x = (x1 * point[0]) + (y1 * point[1]) + (z1 * point[2]);
+                let y = (x2 * point[0]) + (y2 * point[1]) + (z2 * point[2]);
+                let z = (x3 * point[0]) + (y3 * point[1]) + (z3 * point[2]);
+
+                // get the output value using the offset input value instead of the
+                // original input value.
+                [x, y, z]
+            })
+            .collect();
+
+        self.source.process_field(&temp)
     }
 }

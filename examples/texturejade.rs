@@ -22,7 +22,7 @@ fn main() {
         RotatePoint::new(base_secondary_jade).set_angles(90.0, 25.0, 5.0, 0.0);
 
     // Slightly perturb the secondary jade texture for more realism.
-    let perturbed_base_secondary_jade = Turbulence::new(rotated_base_secondary_jade)
+    let perturbed_base_secondary_jade = Turbulence::new(&rotated_base_secondary_jade)
         .set_seed(1)
         .set_frequency(4.0)
         .set_power(1.0 / 4.0)
@@ -41,20 +41,22 @@ fn main() {
 
     // Finally, perturb the combined jade texture to produce the final jade
     // texture. A low roughness produces nice veins.
-    let final_jade = Turbulence::new(combined_jade)
+    let final_jade = Turbulence::new(&combined_jade)
         .set_seed(2)
         .set_frequency(4.0)
         .set_power(1.0 / 16.0)
         .set_roughness(2);
 
-    let planar_texture = PlaneMapBuilder::new(&final_jade)
-        .set_size(1024, 1024)
-        .build();
+    // let planar_texture = PlaneMapBuilder::new(&final_jade)
+    //     .set_size(1024, 1024)
+    //     .build();
 
-    let seamless_texture = PlaneMapBuilder::new(&final_jade)
-        .set_size(1024, 1024)
-        .set_is_seamless(true)
-        .build();
+    let sphere_texture = SphereMapBuilder::new(&final_jade).build();
+
+    // let seamless_texture = PlaneMapBuilder::new(&final_jade)
+    //     .set_size(1024, 1024)
+    //     .set_is_seamless(true)
+    //     .build();
 
     // Create a jade palette.
     let jade_gradient = ColorGradient::new()
@@ -67,11 +69,15 @@ fn main() {
 
     let mut renderer = ImageRenderer::new().set_gradient(jade_gradient);
 
-    renderer
-        .render(&planar_texture)
-        .write_to_file("texture_jade_planar.png");
+    // renderer
+    //     .render(&planar_texture)
+    //     .write_to_file("texture_jade_planar.png");
 
     renderer
-        .render(&seamless_texture)
-        .write_to_file("texture_jade_seamless.png");
+        .render(&sphere_texture)
+        .write_to_file("texture_jade_sphere.png");
+
+    // renderer
+    //     .render(&seamless_texture)
+    //     .write_to_file("texture_jade_seamless.png");
 }

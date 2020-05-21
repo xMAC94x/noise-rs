@@ -33,7 +33,7 @@ pub struct NoiseField2D {
 
     // field_size: (f64, f64),
     // field_origin: (f64, f64),
-    coordinates: Vec<Vector2<f64>>,
+    pub coordinates: Vec<Vector2<f64>>,
 
     pub values: Vec<f64>,
 }

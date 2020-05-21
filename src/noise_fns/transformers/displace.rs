@@ -1,4 +1,6 @@
 use crate::noise_fns::NoiseFn;
+use crate::noisefield::NoiseField2D;
+use crate::NoiseFieldFn;
 
 /// Noise function that uses multiple source functions to displace each coordinate
 /// of the input value before returning the output value from the `source` function.
@@ -108,5 +110,28 @@ where
         // get the output value using the offset input value instead of the
         // original input value.
         self.source.get([x, y, z, u])
+    }
+}
+
+impl<Source, XDisplace, YDisplace, ZDisplace, UDisplace> NoiseFieldFn<NoiseField2D>
+    for Displace<Source, XDisplace, YDisplace, ZDisplace, UDisplace>
+where
+    Source: NoiseFieldFn<NoiseField2D>,
+    XDisplace: NoiseFieldFn<NoiseField2D>,
+    YDisplace: NoiseFieldFn<NoiseField2D>,
+{
+    fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
+        let x_displace = self.x_displace.process_field(field);
+        let y_displace = self.y_displace.process_field(field);
+        let mut displaced = field.clone();
+
+        displaced.coordinates = x_displace
+            .values()
+            .iter()
+            .zip(y_displace.values().iter())
+            .map(|(x, y)| [*x, *y])
+            .collect();
+
+        self.source.process_field(&displaced)
     }
 }
