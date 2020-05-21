@@ -2,6 +2,7 @@ use crate::math::interpolate;
 use std::{self, f64::consts::SQRT_2};
 
 use super::{color_gradient::*, noise_image::*, noise_map::*};
+use crate::noisefield::NoiseField2D;
 
 pub struct ImageRenderer {
     // The color gradient used to specify the image colors.
@@ -176,6 +177,81 @@ impl ImageRenderer {
                     let pr = noise_map.get_value((x as isize + x_right_offset) as usize, y);
                     let pd = noise_map.get_value(x, (y as isize + y_down_offset) as usize);
                     let pu = noise_map.get_value(x, (y as isize + y_up_offset) as usize);
+
+                    light_intensity = self.light_source.calc_light_intensity(pc, pl, pr, pd, pu);
+                    light_intensity *= self.light_source.brightness;
+                } else {
+                    light_intensity = 1.0;
+                }
+
+                let destination_color = self.calc_destination_color(source_color, light_intensity);
+
+                destination_image.set_value(x, y, destination_color);
+            }
+        }
+
+        Box::from(destination_image)
+    }
+
+    pub fn render_noise_field(&mut self, field: &NoiseField2D) -> Box<NoiseImage> {
+        // noise_map.width
+        let [width, height] = field.size();
+
+        let mut destination_image = NoiseImage::new(width, height);
+
+        for y in 0..height {
+            for x in 0..width {
+                let point = field.value_at_point([x, y]);
+
+                let source_color = self.gradient.get_color(point);
+
+                let mut light_intensity;
+
+                if self.light_enabled {
+                    let mut x_left_offset: isize = -1;
+                    let mut x_right_offset: isize = 1;
+                    let mut y_down_offset: isize = -1;
+                    let mut y_up_offset: isize = 1;
+
+                    if self.wrap_enabled {
+                        if x == 0 {
+                            x_left_offset = width as isize - 1;
+                            x_right_offset = 1;
+                        } else if x == (width as isize - 1) as usize {
+                            x_left_offset = -1;
+                            x_right_offset = width as isize - 1;
+                        }
+
+                        if y == 0 {
+                            y_down_offset = height as isize - 1;
+                            y_up_offset = 1;
+                        } else if y == (height as isize - 1) as usize {
+                            y_down_offset = -1;
+                            y_up_offset = height as isize - 1;
+                        }
+                    } else {
+                        if x == 0 {
+                            x_left_offset = 0;
+                            x_right_offset = 1;
+                        } else if x == (width as isize - 1) as usize {
+                            x_left_offset = -1;
+                            x_right_offset = 0;
+                        }
+
+                        if y == 0 {
+                            y_down_offset = 0;
+                            y_up_offset = 1;
+                        } else if y == (height as isize - 1) as usize {
+                            y_down_offset = -1;
+                            y_up_offset = 0;
+                        }
+                    }
+
+                    let pc = point;
+                    let pl = field.value_at_point([(x as isize + x_left_offset) as usize, y]);
+                    let pr = field.value_at_point([(x as isize + x_right_offset) as usize, y]);
+                    let pd = field.value_at_point([x, (y as isize + y_down_offset) as usize]);
+                    let pu = field.value_at_point([x, (y as isize + y_up_offset) as usize]);
 
                     light_intensity = self.light_source.calc_light_intensity(pc, pl, pr, pd, pu);
                     light_intensity *= self.light_source.brightness;

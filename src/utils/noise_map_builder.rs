@@ -258,10 +258,10 @@ impl<'a> NoiseMapBuilder<'a, NoiseField2D> for PlaneMapBuilder<'a> {
         }
 
         field = self.source_module.process_field(&field);
-        let grid_size = field.grid_size();
+        let grid_size = field.size();
 
-        for x in 0..grid_size.0 {
-            for y in 0..grid_size.1 {
+        for x in 0..grid_size[0] {
+            for y in 0..grid_size[1] {
                 result_map.set_value(x, y, field.value_at_point([x, y]));
             }
         }

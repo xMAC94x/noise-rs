@@ -29,7 +29,7 @@ impl NoiseField for NoiseField3D {}
 
 #[derive(Clone, Debug)]
 pub struct NoiseField2D {
-    grid_size: GridSize2D,
+    size: GridSize2D,
 
     // field_size: (f64, f64),
     // field_origin: (f64, f64),
@@ -60,7 +60,7 @@ impl NoiseField2D {
         let grid_size = grid_width * grid_height;
 
         Self {
-            grid_size: GridSize2D {
+            size: GridSize2D {
                 width: grid_width,
                 height: grid_height,
             },
@@ -73,8 +73,8 @@ impl NoiseField2D {
         }
     }
 
-    pub fn grid_size(&self) -> (usize, usize) {
-        (self.grid_size.width, self.grid_size.height)
+    pub fn size(&self) -> Vector2<usize> {
+        [self.size.width, self.size.height]
     }
 
     pub fn coordinates(&self) -> &Vec<Vector2<f64>> {
@@ -129,12 +129,12 @@ impl NoiseField2D {
 
         let [x, y] = grid_point;
 
-        x + (self.grid_size.width * y)
+        x + (self.size.width * y)
     }
 
     pub fn initialize() -> Self {
         Self {
-            grid_size: GridSize2D {
+            size: GridSize2D {
                 width: 1,
                 height: 1,
             },
@@ -300,8 +300,8 @@ mod tests {
     fn create_noisefield2d() {
         let noisefield = NoiseField2D::new(1, 1);
 
-        assert_eq!(noisefield.grid_size.width, 1);
-        assert_eq!(noisefield.grid_size.height, 1);
+        assert_eq!(noisefield.size.width, 1);
+        assert_eq!(noisefield.size.height, 1);
     }
 
     #[test]

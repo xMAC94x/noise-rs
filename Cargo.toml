@@ -25,6 +25,9 @@ default = ["image"]
 [dev-dependencies]
 criterion = "0.1.2"
 
+[profile.release]
+debug=true
+
 [[bench]]
 name = "perlin"
 harness = false
