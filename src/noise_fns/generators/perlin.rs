@@ -53,6 +53,52 @@ impl Seedable for Perlin {
 
 /// 2-dimensional perlin noise
 impl NoiseFn<[f64; 2]> for Perlin {
+    #[cfg(not(feature = "parallel"))]
+    fn get(&self, point: [f64; 2]) -> f64 {
+        const SCALE_FACTOR: f64 = 3.160_493_827_160_493_7;
+
+        #[inline(always)]
+        fn surflet(perm_table: &PermutationTable, corner: [isize; 2], distance: [f64; 2]) -> f64 {
+            let attn = 1.0 - math::dot2(distance, distance);
+            if attn > 0.0 {
+                attn.powi(4) * math::dot2(distance, gradient::get2(perm_table.get2(corner)))
+            } else {
+                0.0
+            }
+        }
+
+        let floored = math::map2(point, f64::floor);
+        let near_corner = math::to_isize2(floored);
+        let far_corner = math::add2(near_corner, math::one2());
+        let near_distance = math::sub2(point, floored);
+        let far_distance = math::sub2(near_distance, math::one2());
+
+        let f00 = surflet(
+            &self.perm_table,
+            [near_corner[0], near_corner[1]],
+            [near_distance[0], near_distance[1]],
+        );
+        let f10 = surflet(
+            &self.perm_table,
+            [far_corner[0], near_corner[1]],
+            [far_distance[0], near_distance[1]],
+        );
+        let f01 = surflet(
+            &self.perm_table,
+            [near_corner[0], far_corner[1]],
+            [near_distance[0], far_distance[1]],
+        );
+        let f11 = surflet(
+            &self.perm_table,
+            [far_corner[0], far_corner[1]],
+            [far_distance[0], far_distance[1]],
+        );
+
+        // Multiply by arbitrary value to scale to -1..1
+        math::clamp((f00 + f10 + f01 + f11) * SCALE_FACTOR, -1.0, 1.0)
+    }
+
+    #[cfg(feature = "parallel")]
     fn get(&self, point: [f64; 2]) -> f64 {
         const SCALE_FACTOR: f64 = 3.160_493_827_160_493_7;
 

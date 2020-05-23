@@ -118,6 +118,24 @@ impl NoiseField2D {
         self.values[index]
     }
 
+    pub fn build_field(&mut self, x_bounds: (f64, f64), y_bounds: (f64, f64)) {
+        let x_extent = x_bounds.1 - x_bounds.0;
+        let y_extent = y_bounds.1 - y_bounds.0;
+
+        let x_step = x_extent / self.size.width as f64;
+        let y_step = y_extent / self.size.height as f64;
+
+        for y in 0..self.size.height {
+            let current_y = y_bounds.0 + y_step * y as f64;
+
+            for x in 0..self.size.width {
+                let current_x = x_bounds.0 + x_step * x as f64;
+
+                self.set_coord_at_point([x, y], [current_x, current_y]);
+            }
+        }
+    }
+
     fn index(&self, grid_point: Vector2<usize>) -> usize {
         // Y
         // |
@@ -328,7 +346,7 @@ mod tests {
         let grid_point = [1, 1];
         let coordinate = [0.1, 1.5];
         let mut noisefield = NoiseField2D::new(3, 3);
-        noisefield.set_field_coord(grid_point, coordinate);
+        noisefield.set_coord_at_point(grid_point, coordinate);
         let index = noisefield.index(grid_point);
 
         assert_eq!(coordinate, noisefield.coordinates[index]);
