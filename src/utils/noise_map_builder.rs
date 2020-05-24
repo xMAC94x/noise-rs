@@ -130,7 +130,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for CylinderMapBuilder<'a> {
         }
 
         field = self.source_module.process_field(&field);
-        let grid_size = field.grid_size();
+        let grid_size = field.size();
 
         for x in 0..grid_size.0 {
             for y in 0..grid_size.1 {
@@ -374,7 +374,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for SphereMapBuilder<'a> {
         }
 
         field = self.source_module.process_field(&field);
-        let grid_size = field.grid_size();
+        let grid_size = field.size();
 
         for x in 0..grid_size.0 {
             for y in 0..grid_size.1 {

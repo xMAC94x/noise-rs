@@ -1,6 +1,6 @@
 use crate::{
     math::scale_shift,
-    noisefield::{NoiseField2D, NoiseField3D},
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
     NoiseFieldFn, NoiseFn,
 };
 

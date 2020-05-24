@@ -1,7 +1,8 @@
-use crate::{math, NoiseFieldFn};
-
-use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
-use crate::noisefield::NoiseField2D;
+use crate::{
+    math,
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    MultiFractal, NoiseFieldFn, NoiseFn, Perlin, Seedable,
+};
 use rayon::prelude::*;
 
 /// Noise function that outputs heterogenous Multifractal noise.

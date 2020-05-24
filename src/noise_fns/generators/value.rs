@@ -1,9 +1,8 @@
-use crate::noisefield::NoiseField2D;
 use crate::{
     math::{self, interpolate},
-    noise_fns::{NoiseFn, Seedable},
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
     permutationtable::PermutationTable,
-    NoiseFieldFn,
+    NoiseFieldFn, NoiseFn, Seedable,
 };
 
 /// Noise function that outputs 2/3/4-dimensional Value noise.

@@ -1,5 +1,5 @@
 use crate::noise_fns::NoiseFn;
-use crate::noisefield::NoiseField2D;
+use crate::noisefield::{NoiseField, NoiseField2D};
 use crate::NoiseFieldFn;
 
 /// Noise function that uses multiple source functions to displace each coordinate

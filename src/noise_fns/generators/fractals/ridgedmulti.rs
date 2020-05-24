@@ -1,7 +1,8 @@
-use crate::math::{self, scale_shift};
-use crate::noise_fns::{MultiFractal, NoiseFn, Perlin, Seedable};
-use crate::noisefield::{NoiseField2D, NoiseField3D};
-use crate::NoiseFieldFn;
+use crate::{
+    math::{self, scale_shift},
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    MultiFractal, NoiseFieldFn, NoiseFn, Perlin, Seedable,
+};
 use rayon::prelude::*;
 
 /// Noise function that outputs ridged-multifractal noise.

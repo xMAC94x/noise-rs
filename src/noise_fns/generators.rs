@@ -17,3 +17,7 @@ mod perlin;
 // mod super_simplex;
 mod value;
 mod worley;
+
+pub trait Generator<T> {
+    fn generate(&self, coordinates: &[T]) -> Vec<f64>;
+}

@@ -17,14 +17,14 @@ name = "noise"
 rand = "0.7"
 rand_xorshift = "0.2"
 image = { version = "0.23", optional = true }
-rayon = "1.3.0"
+rayon = "1.3"
 
 [features]
 default = ["image"]
 parallel = []
 
 [dev-dependencies]
-criterion = "0.1.2"
+criterion = "0.3"
 
 [profile.release]
 debug=true

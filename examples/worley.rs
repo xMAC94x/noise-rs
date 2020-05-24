@@ -28,9 +28,13 @@ fn main() {
         .build()
         .write_to_file("worley_manhattan.png");
 
-    PlaneMapBuilder::new(&Worley::new().set_range_function(RangeFunction::Manhattan).enable_range(true))
-        .build()
-        .write_to_file("worley_manhattan_range.png");
+    PlaneMapBuilder::new(
+        &Worley::new()
+            .set_range_function(RangeFunction::Manhattan)
+            .enable_range(true),
+    )
+    .build()
+    .write_to_file("worley_manhattan_range.png");
 
     PlaneMapBuilder::new(&Worley::new().set_range_function(RangeFunction::Chebyshev))
         .build()

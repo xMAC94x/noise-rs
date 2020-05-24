@@ -15,11 +15,31 @@ struct GridSize3D {
     depth: usize,
 }
 
-pub trait NoiseField {}
+pub trait NoiseField {
+    fn values(&self) -> &Vec<f64>;
+
+    fn set_values(&mut self, values: &[f64]);
+}
 
 // impl NoiseField for NoiseField1D {}
-impl NoiseField for NoiseField2D {}
-impl NoiseField for NoiseField3D {}
+impl NoiseField for NoiseField2D {
+    fn values(&self) -> &Vec<f64> {
+        &self.values
+    }
+
+    fn set_values(&mut self, values: &[f64]) {
+        self.values = Vec::from(values);
+    }
+}
+impl NoiseField for NoiseField3D {
+    fn values(&self) -> &Vec<f64> {
+        &self.values
+    }
+
+    fn set_values(&mut self, values: &[f64]) {
+        self.values = Vec::from(values);
+    }
+}
 // impl NoiseField for NoiseField4D {}
 
 // pub struct NoiseField1D {
@@ -104,10 +124,6 @@ impl NoiseField2D {
         out
     }
 
-    pub fn values(&self) -> &Vec<f64> {
-        &self.values
-    }
-
     pub fn value_at_point(&self, grid_point: Vector2<usize>) -> f64 {
         let index = self.index(grid_point);
 
@@ -174,7 +190,7 @@ impl NoiseField2D {
 
 #[derive(Clone, Debug)]
 pub struct NoiseField3D {
-    grid_size: GridSize3D,
+    size: GridSize3D,
 
     // field_size: (f64, f64),
     // field_origin: (f64, f64),
@@ -185,17 +201,15 @@ pub struct NoiseField3D {
 
 impl NoiseField3D {
     // pub fn new(grid_size: (usize, usize), field_size: (f64, f64), field_origin: (f64, f64)) -> Self {
-    pub fn new(grid_width: usize, grid_height: usize, grid_depth: usize) -> Self {
-        // let (grid_width, grid_height) = grid_size;
-
+    pub fn new(width: usize, height: usize, depth: usize) -> Self {
         // Check for invalid grid width or height.
         //TODO: Return an error here instead of panicking
-        assert!(grid_width > 0);
-        assert!(grid_height > 0);
-        assert!(grid_depth > 0);
-        assert!(grid_width < MAX_GRID_SIZE as usize);
-        assert!(grid_height < MAX_GRID_SIZE as usize);
-        assert!(grid_depth < MAX_GRID_SIZE as usize);
+        assert!(width > 0);
+        assert!(height > 0);
+        assert!(depth > 0);
+        assert!(width < MAX_GRID_SIZE as usize);
+        assert!(height < MAX_GRID_SIZE as usize);
+        assert!(depth < MAX_GRID_SIZE as usize);
 
         // let (field_width, field_height) = field_size;
         //
@@ -204,13 +218,13 @@ impl NoiseField3D {
         // assert!((0.0 - field_width).abs() < std::f64::EPSILON);
         // assert!((0.0 - field_height).abs() < std::f64::EPSILON);
 
-        let grid_size = grid_width * grid_height * grid_depth;
+        let grid_size = width * height * depth;
 
         Self {
-            grid_size: GridSize3D {
-                width: grid_width,
-                height: grid_height,
-                depth: grid_depth,
+            size: GridSize3D {
+                width,
+                height,
+                depth,
             },
 
             // field_size,
@@ -221,11 +235,11 @@ impl NoiseField3D {
         }
     }
 
-    pub fn grid_size(&self) -> (usize, usize, usize) {
+    pub fn size(&self) -> (usize, usize, usize) {
         (
-            self.grid_size.width,
-            self.grid_size.height,
-            self.grid_size.depth,
+            self.size.width,
+            self.size.height,
+            self.size.depth,
         )
     }
 
@@ -256,10 +270,6 @@ impl NoiseField3D {
         out
     }
 
-    pub fn values(&self) -> &Vec<f64> {
-        &self.values
-    }
-
     pub fn value_at_point(&self, grid_point: Vector3<usize>) -> f64 {
         let index = self.index(grid_point);
 
@@ -268,6 +278,30 @@ impl NoiseField3D {
 
     pub fn value_at_index(&self, index: usize) -> f64 {
         self.values[index]
+    }
+
+    pub fn build_field(&mut self, x_bounds: (f64, f64), y_bounds: (f64, f64), z_bounds: (f64, f64)) {
+        let x_extent = x_bounds.1 - x_bounds.0;
+        let y_extent = y_bounds.1 - y_bounds.0;
+        let z_extent = y_bounds.1 - y_bounds.0;
+
+        let x_step = x_extent / self.size.width as f64;
+        let y_step = y_extent / self.size.height as f64;
+        let z_step = y_extent / self.size.depth as f64;
+
+        for z in 0..self.size.depth {
+            let current_z = z_bounds.0 + z_step * z as f64;
+
+            for y in 0..self.size.height {
+                let current_y = y_bounds.0 + y_step * y as f64;
+
+                for x in 0..self.size.width {
+                    let current_x = x_bounds.0 + x_step * x as f64;
+
+                    self.set_coord_at_point([x, y, z], [current_x, current_y, current_z]);
+                }
+            }
+        }
     }
 
     fn index(&self, grid_point: Vector3<usize>) -> usize {
@@ -281,12 +315,12 @@ impl NoiseField3D {
 
         let [x, y, z] = grid_point;
 
-        x + (y * self.grid_size.width) + (z * self.grid_size.width * self.grid_size.height)
+        x + (y * self.size.width) + (z * self.size.width * self.size.height)
     }
 
     pub fn initialize() -> Self {
         Self {
-            grid_size: GridSize3D {
+            size: GridSize3D {
                 width: 1,
                 height: 1,
                 depth: 1,

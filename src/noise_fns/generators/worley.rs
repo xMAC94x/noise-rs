@@ -1,9 +1,8 @@
-use crate::noisefield::NoiseField2D;
 use crate::{
     math,
-    noise_fns::{NoiseFn, Seedable},
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
     permutationtable::PermutationTable,
-    NoiseFieldFn,
+    NoiseFieldFn, NoiseFn, Seedable,
 };
 
 /// Noise function that outputs Worley noise.

@@ -1,5 +1,7 @@
-use crate::noisefield::{NoiseField2D, NoiseField3D};
-use crate::{NoiseFieldFn, NoiseFn};
+use crate::{
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    NoiseFieldFn, NoiseFn,
+};
 
 /// Noise function that outputs the product of the two output values from two source
 /// functions.

@@ -1,6 +1,7 @@
-use crate::noise_fns::NoiseFn;
-use crate::noisefield::*;
-use crate::NoiseFieldFn;
+use crate::{
+    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    NoiseFieldFn, NoiseFn,
+};
 
 /// Noise function that outputs a constant value.
 ///
