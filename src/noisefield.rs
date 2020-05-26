@@ -236,11 +236,7 @@ impl NoiseField3D {
     }
 
     pub fn size(&self) -> (usize, usize, usize) {
-        (
-            self.size.width,
-            self.size.height,
-            self.size.depth,
-        )
+        (self.size.width, self.size.height, self.size.depth)
     }
 
     pub fn coordinates(&self) -> &Vec<Vector3<f64>> {
@@ -280,7 +276,12 @@ impl NoiseField3D {
         self.values[index]
     }
 
-    pub fn build_field(&mut self, x_bounds: (f64, f64), y_bounds: (f64, f64), z_bounds: (f64, f64)) {
+    pub fn build_field(
+        &mut self,
+        x_bounds: (f64, f64),
+        y_bounds: (f64, f64),
+        z_bounds: (f64, f64),
+    ) {
         let x_extent = x_bounds.1 - x_bounds.0;
         let y_extent = y_bounds.1 - y_bounds.0;
         let z_extent = y_bounds.1 - y_bounds.0;

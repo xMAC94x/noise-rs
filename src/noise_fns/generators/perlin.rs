@@ -1,3 +1,4 @@
+use crate::math::interpolate::s_curve5;
 use crate::{
     gradient,
     math::{self, Vector2, Vector3, Vector4},
@@ -66,6 +67,62 @@ impl Perlin {
 
         // Multiply by arbitrary value to scale to -1..1
         math::clamp((f00 + f10 + f01 + f11) * SCALE_FACTOR, -1.0, 1.0)
+    }
+
+    pub fn perlin_2d_lerp(&self, point: Vector2<f64>) -> f64 {
+        #[inline]
+        fn gradient_dot_v(perm: usize, point: [f64; 2]) -> f64 {
+            let x = point[0];
+            let y = point[1];
+
+            match perm & 0b11 {
+                0 => x + y,  // ( 1,  1)
+                1 => -x + y, // (-1,  1)
+                2 => x - y,  // ( 1, -1)
+                3 => -x - y, // (-1, -1)
+                _ => unreachable!(),
+            }
+        }
+
+        // Unscaled range of linearly interpolated perlin noise should be (-sqrt(N/4), sqrt(N/4)),
+        // where N is the dimension of the noise.
+        // Need to invert this value and multiply the unscaled result by the value to get a scaled
+        // range of (-1, 1).
+        let scale_factor = (2.0_f64).sqrt(); // 1/sqrt(N/4), N=2 -> 1/sqrt(1/2) -> sqrt(2)
+
+        let floored = math::map2(point, f64::floor);
+        let near_corner = math::to_isize2(floored);
+        let far_corner = math::add2(near_corner, [1; 2]);
+        let near_distance = math::sub2(point, floored);
+        let far_distance = math::sub2(near_distance, [1.0; 2]);
+
+        let u = s_curve5(near_distance[0]);
+        let v = s_curve5(near_distance[1]);
+
+        let a = gradient_dot_v(self.perm_table.get2(near_corner), near_distance);
+        let b = gradient_dot_v(
+            self.perm_table.get2([far_corner[0], near_corner[1]]),
+            [far_distance[0], near_distance[1]],
+        );
+        let c = gradient_dot_v(
+            self.perm_table.get2([near_corner[0], far_corner[1]]),
+            [near_distance[0], far_distance[1]],
+        );
+        let d = gradient_dot_v(self.perm_table.get2(far_corner), far_distance);
+
+        let k0 = a;
+        let k1 = b - a;
+        let k2 = c - a;
+        let k3 = a + d - b - c;
+
+        let unscaled_result = k0 + k1 * u + k2 * v + k3 * u * v;
+
+        let scaled_result = unscaled_result * scale_factor;
+
+        // At this point, we should be really damn close to the (-1, 1) range, but some float errors
+        // could have accumulated, so let's just clamp the results to (-1, 1) to cut off any
+        // outliers and return it.
+        math::clamp(scaled_result, -1.0, 1.0)
     }
 
     pub fn perlin_3d(&self, point: Vector3<f64>) -> f64 {
@@ -376,7 +433,7 @@ impl Perlin {
     fn inner_process_2d_field_serial(&self, coordinates: &[Vector2<f64>]) -> Vec<f64> {
         coordinates
             .iter()
-            .map(|point| self.perlin_2d(*point))
+            .map(|point| self.perlin_2d_lerp(*point))
             .collect()
     }
 
@@ -391,7 +448,7 @@ impl Perlin {
     fn inner_process_2d_field_parallel(&self, coordinates: &[Vector2<f64>]) -> Vec<f64> {
         coordinates
             .par_iter()
-            .map(|point| self.perlin_2d(*point))
+            .map(|point| self.perlin_2d_lerp(*point))
             .collect()
     }
 
