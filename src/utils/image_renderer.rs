@@ -1,5 +1,6 @@
 use crate::math::interpolate;
 use std::{self, f64::consts::SQRT_2};
+use vek::Vec2;
 
 use super::{color_gradient::*, noise_image::*, noise_map::*};
 use crate::noisefield::NoiseField2D;
@@ -195,13 +196,13 @@ impl ImageRenderer {
 
     pub fn render_noise_field(&mut self, field: &NoiseField2D) -> Box<NoiseImage> {
         // noise_map.width
-        let [width, height] = field.size();
+        let [width, height] = field.size().into();
 
         let mut destination_image = NoiseImage::new(width, height);
 
         for y in 0..height {
             for x in 0..width {
-                let point = field.value_at_point([x, y]);
+                let point = field.value_at_point(Vec2 { x, y });
 
                 let source_color = self.gradient.get_color(point);
 
@@ -248,10 +249,14 @@ impl ImageRenderer {
                     }
 
                     let pc = point;
-                    let pl = field.value_at_point([(x as isize + x_left_offset) as usize, y]);
-                    let pr = field.value_at_point([(x as isize + x_right_offset) as usize, y]);
-                    let pd = field.value_at_point([x, (y as isize + y_down_offset) as usize]);
-                    let pu = field.value_at_point([x, (y as isize + y_up_offset) as usize]);
+                    let pl =
+                        field.value_at_point(Vec2::new((x as isize + x_left_offset) as usize, y));
+                    let pr =
+                        field.value_at_point(Vec2::new((x as isize + x_right_offset) as usize, y));
+                    let pd =
+                        field.value_at_point(Vec2::new(x, (y as isize + y_down_offset) as usize));
+                    let pu =
+                        field.value_at_point(Vec2::new(x, (y as isize + y_up_offset) as usize));
 
                     light_intensity = self.light_source.calc_light_intensity(pc, pl, pr, pd, pu);
                     light_intensity *= self.light_source.brightness;

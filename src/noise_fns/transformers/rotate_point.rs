@@ -3,6 +3,8 @@ use crate::{
     NoiseFieldFn, NoiseFn,
 };
 
+use vek::{Vec2, Vec3};
+
 /// Noise function that rotates the input value around the origin before
 /// returning the output value from the source function.
 ///
@@ -158,12 +160,12 @@ where
         temp.coordinates = field
             .coordinates()
             .iter()
-            .map(|[x, y]| {
-                let x2 = x * theta.cos() - y * theta.sin();
-                let y2 = x * theta.sin() + y * theta.cos();
+            .map(|point| {
+                let x = point.x * theta.cos() - point.y * theta.sin();
+                let y = point.x * theta.sin() + point.y * theta.cos();
 
                 // set the offset input value instead of the original input value.
-                [x2, y2]
+                Vec2{x, y }
             })
             .collect();
 
@@ -203,13 +205,13 @@ where
             .map(|point| {
                 // In three dimensions, we could rotate around any of the x, y, or z
                 // axes. Need a more complicated function to handle this case.
-                let x = (x1 * point[0]) + (y1 * point[1]) + (z1 * point[2]);
-                let y = (x2 * point[0]) + (y2 * point[1]) + (z2 * point[2]);
-                let z = (x3 * point[0]) + (y3 * point[1]) + (z3 * point[2]);
+                let x = (x1 * point.x) + (y1 * point.y) + (z1 * point.z);
+                let y = (x2 * point.x) + (y2 * point.y) + (z2 * point.z);
+                let z = (x3 * point.x) + (y3 * point.y) + (z3 * point.z);
 
                 // get the output value using the offset input value instead of the
                 // original input value.
-                [x, y, z]
+                Vec3{x, y, z}
             })
             .collect();
 

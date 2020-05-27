@@ -4,6 +4,7 @@ use crate::{
     Fbm, MultiFractal, NoiseFieldFn, NoiseFn, Seedable,
 };
 use rayon::prelude::*;
+use vek::{Vec2, Vec3};
 
 /// Noise function that randomly displaces the input value before returning the
 /// output value from the source function.
@@ -197,37 +198,6 @@ impl<'a, T> Seedable for Turbulence<'a, T> {
 //     }
 // }
 
-// impl<Source> NoiseFieldFn<NoiseField2D> for Turbulence<Source>
-// where
-//     Source: NoiseFieldFn<NoiseField2D>,
-// {
-//     fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
-//         let mut temp = field.clone();
-//
-//         temp.coordinates = field
-//             .coordinates()
-//             .iter()
-//             .map(|point| {
-//                 // First, create offsets based on the input values to keep the sampled
-//                 // points from being near a integer boundary. This is a result of
-//                 // using perlin noise, which returns zero at integer boundaries.
-//                 let x0 = point[0] + 12414.0 / 65536.0;
-//                 let y0 = point[1] + 65124.0 / 65536.0;
-//
-//                 let x1 = point[0] + 26519.0 / 65536.0;
-//                 let y1 = point[1] + 18128.0 / 65536.0;
-//
-//                 let x_distort = point[0] + (self.x_distort_function.get([x0, y0]) * self.power);
-//                 let y_distort = point[1] + (self.y_distort_function.get([x1, y1]) * self.power);
-//
-//                 [x_distort, y_distort]
-//             })
-//             .collect();
-//
-//         self.source.process_field(&temp)
-//     }
-// }
-
 impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
     fn process_field(&self, field: &NoiseField2D) -> NoiseField2D {
         let mut temp = field.clone();
@@ -241,10 +211,10 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
             .coordinates()
             .par_iter()
             .map(|point| {
-                let x = point[0] + 12414.0 / 65536.0;
-                let y = point[1] + 65124.0 / 65536.0;
+                let x = point.x + 12414.0 / 65536.0;
+                let y = point.y + 65124.0 / 65536.0;
 
-                [x, y]
+                Vec2{x, y}
             })
             .collect();
 
@@ -254,10 +224,10 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
             .coordinates()
             .par_iter()
             .map(|point| {
-                let x = point[0] + 26519.0 / 65536.0;
-                let y = point[1] + 18128.0 / 65536.0;
+                let x = point.x + 26519.0 / 65536.0;
+                let y = point.y + 18128.0 / 65536.0;
 
-                [x, y]
+                Vec2{x, y}
             })
             .collect();
 
@@ -271,10 +241,10 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
             .par_iter()
             .enumerate()
             .map(|(index, point)| {
-                let x_distort = point[0] + (x_distort_field.value_at_index(index) * power);
-                let y_distort = point[1] + (y_distort_field.value_at_index(index) * power);
+                let x_distort = point.x + (x_distort_field.value_at_index(index) * power);
+                let y_distort = point.y + (y_distort_field.value_at_index(index) * power);
 
-                [x_distort, y_distort]
+                Vec2{x: x_distort, y: y_distort}
             })
             .collect();
 
@@ -295,11 +265,11 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
             .coordinates()
             .iter()
             .map(|point| {
-                let x = point[0] + 12414.0 / 65536.0;
-                let y = point[1] + 65124.0 / 65536.0;
-                let z = point[2] + 31337.0 / 65536.0;
+                let x = point.x + 12414.0 / 65536.0;
+                let y = point.y + 65124.0 / 65536.0;
+                let z = point.z + 31337.0 / 65536.0;
 
-                [x, y, z]
+                Vec3{x, y, z}
             })
             .collect();
 
@@ -309,11 +279,11 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
             .coordinates()
             .iter()
             .map(|point| {
-                let x = point[0] + 26519.0 / 65536.0;
-                let y = point[1] + 18128.0 / 65536.0;
-                let z = point[2] + 60943.0 / 65536.0;
+                let x = point.x + 26519.0 / 65536.0;
+                let y = point.y + 18128.0 / 65536.0;
+                let z = point.z + 60943.0 / 65536.0;
 
-                [x, y, z]
+                Vec3{x, y, z}
             })
             .collect();
 
@@ -323,11 +293,11 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
             .coordinates()
             .iter()
             .map(|point| {
-                let x = point[0] + 53820.0 / 65536.0;
-                let y = point[1] + 11213.0 / 65536.0;
-                let z = point[2] + 44845.0 / 65536.0;
+                let x = point.x + 53820.0 / 65536.0;
+                let y = point.y + 11213.0 / 65536.0;
+                let z = point.z + 44845.0 / 65536.0;
 
-                [x, y, z]
+                Vec3{x, y, z}
             })
             .collect();
 
@@ -340,11 +310,11 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
             .iter()
             .enumerate()
             .map(|(index, point)| {
-                let x_distort = point[0] + (x_distort_field.value_at_index(index) * self.power);
-                let y_distort = point[1] + (y_distort_field.value_at_index(index) * self.power);
-                let z_distort = point[2] + (z_distort_field.value_at_index(index) * self.power);
+                let x_distort = point.x + (x_distort_field.value_at_index(index) * self.power);
+                let y_distort = point.y + (y_distort_field.value_at_index(index) * self.power);
+                let z_distort = point.z + (z_distort_field.value_at_index(index) * self.power);
 
-                [x_distort, y_distort, z_distort]
+                Vec3{x: x_distort, y: y_distort, z: z_distort}
             })
             .collect();
 

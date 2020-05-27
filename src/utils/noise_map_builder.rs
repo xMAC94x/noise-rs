@@ -1,5 +1,6 @@
 use crate::noisefield::{NoiseField, NoiseField2D, NoiseField3D};
 use crate::{utils::noise_map::NoiseMap, NoiseFieldFn};
+use vek::{Vec2, Vec3};
 
 pub trait NoiseMapBuilder<'a, T>
 where
@@ -116,7 +117,10 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for CylinderMapBuilder<'a> {
                 let point_x = current_angle.to_radians().cos();
                 let point_z = current_angle.to_radians().sin();
 
-                field.set_coord_at_point([x, y, 0], [point_x, current_height, point_z]);
+                field.set_coord_at_point(
+                    Vec3 { x, y, z: 0 },
+                    Vec3::new(point_x, current_height, point_z),
+                );
 
                 // let value = self.source_module.get([point_x, current_height, point_z]);
 
@@ -134,7 +138,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for CylinderMapBuilder<'a> {
 
         for x in 0..grid_size.0 {
             for y in 0..grid_size.1 {
-                result_map.set_value(x, y, field.value_at_point([x, y, 0]));
+                result_map.set_value(x, y, field.value_at_point(Vec3 { x, y, z: 0 }));
             }
         }
 
@@ -228,7 +232,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField2D> for PlaneMapBuilder<'a> {
             for x in 0..width {
                 let current_x = self.x_bounds.0 + x_step * x as f64;
 
-                field.set_coord_at_point([x, y], [current_x, current_y]);
+                field.set_coord_at_point(Vec2 { x, y }, Vec2::new(current_x, current_y));
 
                 // let final_value = if self.is_seamless {
                 //     let sw_value = self.source_module.get([current_x, current_y, 0.0]);
@@ -262,7 +266,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField2D> for PlaneMapBuilder<'a> {
 
         for x in 0..grid_size[0] {
             for y in 0..grid_size[1] {
-                result_map.set_value(x, y, field.value_at_point([x, y]));
+                result_map.set_value(x, y, field.value_at_point(Vec2::new(x, y)));
             }
         }
 
@@ -369,7 +373,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for SphereMapBuilder<'a> {
 
                 let point = lat_lon_to_xyz(current_lat, current_lon, self.radius);
 
-                field.set_coord_at_point([x, y, 0], point);
+                field.set_coord_at_point(Vec3 { x, y, z: 0 }, Vec3::from(point));
             }
         }
 
@@ -378,7 +382,7 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for SphereMapBuilder<'a> {
 
         for x in 0..grid_size.0 {
             for y in 0..grid_size.1 {
-                result_map.set_value(x, y, field.value_at_point([x, y, 0]));
+                result_map.set_value(x, y, field.value_at_point(Vec3 { x, y, z: 0 }));
             }
         }
 
