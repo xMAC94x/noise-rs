@@ -18,6 +18,8 @@ struct GridSize3D {
 pub trait NoiseField {
     fn values(&self) -> &Vec<f64>;
 
+    fn value_at_index(&self, index: usize) -> f64;
+
     fn set_values(&mut self, values: &[f64]);
 }
 
@@ -27,6 +29,10 @@ impl NoiseField for NoiseField2D {
         &self.values
     }
 
+    fn value_at_index(&self, index: usize) -> f64 {
+        self.values[index]
+    }
+
     fn set_values(&mut self, values: &[f64]) {
         self.values = Vec::from(values);
     }
@@ -34,6 +40,10 @@ impl NoiseField for NoiseField2D {
 impl NoiseField for NoiseField3D {
     fn values(&self) -> &Vec<f64> {
         &self.values
+    }
+
+    fn value_at_index(&self, index: usize) -> f64 {
+        self.values[index]
     }
 
     fn set_values(&mut self, values: &[f64]) {
@@ -53,7 +63,8 @@ pub struct NoiseField2D {
 
     // field_size: (f64, f64),
     // field_origin: (f64, f64),
-    pub coordinates: Vec<Vec2<f64>>,
+    pub x: Vec<f64>,
+    pub y: Vec<f64>,
 
     pub values: Vec<f64>,
 }
@@ -87,7 +98,9 @@ impl NoiseField2D {
 
             // field_size,
             // field_origin,
-            coordinates: vec![Vec2::zero(); grid_size],
+
+            x: vec![0.0; grid_size],
+            y: vec![0.0; grid_size],
 
             values: vec![0.0; grid_size],
         }
@@ -97,28 +110,48 @@ impl NoiseField2D {
         [self.size.width, self.size.height]
     }
 
-    pub fn coordinates(&self) -> &Vec<Vec2<f64>> {
-        &self.coordinates
+    pub fn x(&self) -> &Vec<f64> {
+        &self.x
+    }
+
+    pub fn y(&self) -> &Vec<f64> {
+        &self.y
+    }
+
+    pub fn coordinates(&self) -> Vec<Vec2<f64>> {
+        self.x
+            .iter()
+            .zip(self.y.iter())
+            .map(|(&x, &y)| Vec2 { x, y })
+            .collect()
     }
 
     pub fn coord_at_point(&self, point: Vec2<usize>) -> Vec2<f64> {
         let index = self.index(point);
 
-        self.coordinates[index]
+        Vec2 {
+            x: self.x[index],
+            y: self.y[index],
+        }
     }
 
     pub fn set_coord_at_point(&mut self, point: Vec2<usize>, coordinate: Vec2<f64>) {
         let index = self.index(point);
 
-        self.coordinates[index] = coordinate;
+        self.x[index] = coordinate.x;
+        self.y[index] = coordinate.y;
     }
 
     pub fn scale_coordinates(&self, scale: f64) -> Self {
-        let out = self.clone();
+        let mut out = self.clone();
 
-        for &coordinate in &out.coordinates {
-            coordinate.map(|x| x * scale);
-        }
+        out.x = self.x.iter().map(|x| {
+            x * scale
+        }).collect();
+
+        out.y = self.y.iter().map(|a| {
+            a * scale
+        }).collect();
 
         out
     }
@@ -126,10 +159,6 @@ impl NoiseField2D {
     pub fn value_at_point(&self, point: Vec2<usize>) -> f64 {
         let index = self.index(point);
 
-        self.values[index]
-    }
-
-    pub fn value_at_index(&self, index: usize) -> f64 {
         self.values[index]
     }
 
@@ -172,7 +201,8 @@ impl NoiseField2D {
 
             // field_size: (0.0, 0.0),
             // field_origin: (0.0, 0.0),
-            coordinates: Vec::new(),
+            x: Vec::new(),
+            y: Vec::new(),
 
             values: Vec::new(),
         }
@@ -268,10 +298,6 @@ impl NoiseField3D {
         self.values[index]
     }
 
-    pub fn value_at_index(&self, index: usize) -> f64 {
-        self.values[index]
-    }
-
     pub fn build_field(
         &mut self,
         x_bounds: (f64, f64),
@@ -284,7 +310,7 @@ impl NoiseField3D {
 
         let x_step = x_extent / self.size.width as f64;
         let y_step = y_extent / self.size.height as f64;
-        let z_step = y_extent / self.size.depth as f64;
+        let z_step = z_extent / self.size.depth as f64;
 
         for z in 0..self.size.depth {
             let current_z = z_bounds.0 + z_step * z as f64;

@@ -230,7 +230,7 @@ impl NoiseFieldFn<NoiseField2D> for Fbm {
             .map(|(index, &point)| {
                 let mut result = 0.0;
 
-                let mut pnt = point.map(|a| a * self.frequency);
+                let mut point = point.map(|a| a * self.frequency);
 
                 for x in 0..self.octaves {
                     // Get the signal.
@@ -243,7 +243,7 @@ impl NoiseFieldFn<NoiseField2D> for Fbm {
                     result += signal;
 
                     // Increase the frequency for the next octave.
-                    pnt = point.map(|a| a * self.lacunarity);
+                    point = point.map(|a| a * self.lacunarity);
                 }
 
                 // Scale and shift the result into the [-1,1] range

@@ -27,7 +27,7 @@ fn bench_perlin2d(c: &mut Criterion) {
         b.iter(|| {
             for y in 0..height {
                 for x in 0..width {
-                    let coord = field.coord_at_point(Vec2{x, y});
+                    let coord = field.coord_at_point(Vec2 { x, y });
                     black_box(perlin.get([coord.x, coord.y]));
                 }
             }
@@ -43,9 +43,11 @@ fn bench_perlin2d(c: &mut Criterion) {
     });
 
     group.bench_function("NoiseField - AutoVec", |b| {
-        let x: Vec<f64> = field.coordinates.iter().map(|point| point.x).collect();
-        let y: Vec<f64> = field.coordinates.iter().map(|point| point.y).collect();
-        b.iter(|| black_box(perlin.perlin_2d_parallel(&x, &y)));
+        b.iter(|| black_box(perlin.perlin_2d_parallel(&field.x, &field.y)));
+    });
+
+    group.bench_function("NoiseField - AutoVec (ParIter)", |b| {
+        b.iter(|| black_box(perlin.perlin_2d_parallel_pariter(&field.x, &field.y)));
     });
 
     group.finish();

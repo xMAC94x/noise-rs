@@ -205,54 +205,26 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
         // First, create offsets based on the input values to keep the sampled
         // points from being near a integer boundary. This is a result of
         // using perlin noise, which returns zero at integer boundaries.
-        let mut x_temp_field = field.clone();
+        let mut temp_field = field.clone();
 
-        x_temp_field.coordinates = field
-            .coordinates()
-            .par_iter()
-            .map(|point| {
-                let x = point.x + 12414.0 / 65536.0;
-                let y = point.y + 65124.0 / 65536.0;
+        temp_field.x = field.x().iter().map(|&x| x + 12414.0 / 65536.0).collect();
+        temp_field.y = field.y().iter().map(|&y| y + 65124.0 / 65536.0).collect();
 
-                Vec2 { x, y }
-            })
-            .collect();
+        let x_distort_field = self.x_distort_function.process_field(&temp_field);
+        let y_distort_field = self.y_distort_function.process_field(&temp_field);
 
-        let mut y_temp_field = field.clone();
-
-        y_temp_field.coordinates = field
-            .coordinates()
-            .par_iter()
-            .map(|point| {
-                let x = point.x + 26519.0 / 65536.0;
-                let y = point.y + 18128.0 / 65536.0;
-
-                Vec2 { x, y }
-            })
-            .collect();
-
-        let x_distort_field = self.x_distort_function.process_field(&x_temp_field);
-        let y_distort_field = self.x_distort_function.process_field(&y_temp_field);
-
-        let power = self.power;
-
-        temp.coordinates = field
-            .coordinates()
-            .par_iter()
-            .enumerate()
-            .map(|(index, point)| {
-                let x_distort = point.x + (x_distort_field.value_at_index(index) * power);
-                let y_distort = point.y + (y_distort_field.value_at_index(index) * power);
-
-                Vec2 {
-                    x: x_distort,
-                    y: y_distort,
-                }
-            })
-            .collect();
+        temp.x = distort(&field.x(), &x_distort_field, self.power);
+        temp.y = distort(&field.y(), &y_distort_field, self.power);
 
         self.source.process_field(&temp)
     }
+}
+
+fn distort(src: &[f64], field: &dyn NoiseField, power: f64) -> Vec<f64> {
+    src.iter()
+        .enumerate()
+        .map(|(index, &a)| a + field.value_at_index(index) * power)
+        .collect()
 }
 
 impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
@@ -262,9 +234,9 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
         // First, create offsets based on the input values to keep the sampled
         // points from being near a integer boundary. This is a result of
         // using perlin noise, which returns zero at integer boundaries.
-        let mut x_temp_field = field.clone();
+        let mut temp_field = field.clone();
 
-        x_temp_field.coordinates = field
+        temp_field.coordinates = field
             .coordinates()
             .iter()
             .map(|point| {
@@ -276,37 +248,9 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
             })
             .collect();
 
-        let mut y_temp_field = field.clone();
-
-        y_temp_field.coordinates = field
-            .coordinates()
-            .iter()
-            .map(|point| {
-                let x = point.x + 26519.0 / 65536.0;
-                let y = point.y + 18128.0 / 65536.0;
-                let z = point.z + 60943.0 / 65536.0;
-
-                Vec3 { x, y, z }
-            })
-            .collect();
-
-        let mut z_temp_field = field.clone();
-
-        z_temp_field.coordinates = field
-            .coordinates()
-            .iter()
-            .map(|point| {
-                let x = point.x + 53820.0 / 65536.0;
-                let y = point.y + 11213.0 / 65536.0;
-                let z = point.z + 44845.0 / 65536.0;
-
-                Vec3 { x, y, z }
-            })
-            .collect();
-
-        let x_distort_field = self.x_distort_function.process_field(&x_temp_field);
-        let y_distort_field = self.x_distort_function.process_field(&y_temp_field);
-        let z_distort_field = self.x_distort_function.process_field(&z_temp_field);
+        let x_distort_field = self.x_distort_function.process_field(&temp_field);
+        let y_distort_field = self.y_distort_function.process_field(&temp_field);
+        let z_distort_field = self.z_distort_function.process_field(&temp_field);
 
         temp.coordinates = field
             .coordinates()

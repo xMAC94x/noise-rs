@@ -157,15 +157,35 @@ where
         // z-axis.
         let theta = self.z_angle.to_radians();
 
-        temp.coordinates = field
-            .coordinates()
-            .iter()
-            .map(|point| {
-                let x = point.x * theta.cos() - point.y * theta.sin();
-                let y = point.x * theta.sin() + point.y * theta.cos();
+        // temp.coordinates = field
+        //     .coordinates()
+        //     .iter()
+        //     .map(|point| {
+        //         let x = point.x * theta.cos() - point.y * theta.sin();
+        //         let y = point.x * theta.sin() + point.y * theta.cos();
+        //
+        //         // set the offset input value instead of the original input value.
+        //         Vec2 { x, y }
+        //     })
+        //     .collect();
 
-                // set the offset input value instead of the original input value.
-                Vec2 { x, y }
+        temp.x = field
+            .x()
+            .iter()
+            .zip(field.y().iter())
+            .map(|(&x, &y)| {
+                x * theta.cos() - y * theta.sin()
+                // let y = x * theta.sin() + y * theta.cos();
+            })
+            .collect();
+
+        temp.y = field
+            .x()
+            .iter()
+            .zip(field.y().iter())
+            .map(|(&x, &y)| {
+                // x * theta.cos() - y * theta.sin()
+                x * theta.sin() + y * theta.cos()
             })
             .collect();
 

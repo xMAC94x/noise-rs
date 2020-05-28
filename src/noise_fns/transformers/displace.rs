@@ -127,12 +127,9 @@ where
         let y_displace = self.y_displace.process_field(field);
         let mut displaced = field.clone();
 
-        displaced.coordinates = x_displace
-            .values()
-            .iter()
-            .zip(y_displace.values().iter())
-            .map(|(&x, &y)| Vec2 { x, y })
-            .collect();
+        displaced.x = x_displace.values().iter().map(|&x| x).collect();
+
+        displaced.y = y_displace.values().iter().map(|&y| y).collect();
 
         self.source.process_field(&displaced)
     }
