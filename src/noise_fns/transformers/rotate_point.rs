@@ -165,7 +165,7 @@ where
                 let y = point.x * theta.sin() + point.y * theta.cos();
 
                 // set the offset input value instead of the original input value.
-                Vec2{x, y }
+                Vec2 { x, y }
             })
             .collect();
 
@@ -211,7 +211,7 @@ where
 
                 // get the output value using the offset input value instead of the
                 // original input value.
-                Vec3{x, y, z}
+                Vec3 { x, y, z }
             })
             .collect();
 

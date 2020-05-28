@@ -264,11 +264,14 @@ impl NoiseFieldFn<NoiseField2D> for Value {
         out.values = field
             .coordinates()
             .iter()
-            .map(|point| {
-                let floored = math::map2(*point, f64::floor);
+            .map(|&point| {
+                let floored = math::map2([point.x, point.y], f64::floor);
                 let near_corner = math::to_isize2(floored);
                 let far_corner = math::add2(near_corner, math::one2());
-                let weight = math::map2(math::sub2(*point, floored), interpolate::s_curve5);
+                let weight = math::map2(
+                    math::sub2([point.x, point.y], floored),
+                    interpolate::s_curve5,
+                );
 
                 let f00 = get(&self.perm_table, [near_corner[0], near_corner[1]]);
                 let f10 = get(&self.perm_table, [far_corner[0], near_corner[1]]);

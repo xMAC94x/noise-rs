@@ -230,15 +230,15 @@ impl NoiseFieldFn<NoiseField2D> for BasicMulti {
             .coordinates()
             .par_iter()
             .enumerate()
-            .map(|(index, point)| {
+            .map(|(index, &point)| {
                 // First unscaled octave of function; later octaves are scaled.
-                let mut pnt = math::mul2(*point, self.frequency);
+                let mut point = point.map(|a| a * self.frequency);
                 let mut result = fields[0].value_at_index(index);
 
                 // Spectral construction inner loop, where the fractal is built.
                 for x in 1..self.octaves {
                     // Raise the spatial frequency.
-                    pnt = math::mul2(pnt, self.lacunarity);
+                    point = point.map(|a| a * self.lacunarity);
 
                     // Get noise value.
                     let mut signal = fields[x].value_at_index(index);

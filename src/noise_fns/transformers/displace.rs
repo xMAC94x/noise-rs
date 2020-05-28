@@ -1,6 +1,8 @@
-use crate::noise_fns::NoiseFn;
-use crate::noisefield::{NoiseField, NoiseField2D};
-use crate::NoiseFieldFn;
+use crate::{
+    noisefield::{NoiseField, NoiseField2D},
+    NoiseFieldFn, NoiseFn,
+};
+use vek::Vec2;
 
 /// Noise function that uses multiple source functions to displace each coordinate
 /// of the input value before returning the output value from the `source` function.
@@ -129,7 +131,7 @@ where
             .values()
             .iter()
             .zip(y_displace.values().iter())
-            .map(|(x, y)| [*x, *y])
+            .map(|(&x, &y)| Vec2 { x, y })
             .collect();
 
         self.source.process_field(&displaced)

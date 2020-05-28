@@ -214,7 +214,7 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
                 let x = point.x + 12414.0 / 65536.0;
                 let y = point.y + 65124.0 / 65536.0;
 
-                Vec2{x, y}
+                Vec2 { x, y }
             })
             .collect();
 
@@ -227,7 +227,7 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
                 let x = point.x + 26519.0 / 65536.0;
                 let y = point.y + 18128.0 / 65536.0;
 
-                Vec2{x, y}
+                Vec2 { x, y }
             })
             .collect();
 
@@ -244,7 +244,10 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
                 let x_distort = point.x + (x_distort_field.value_at_index(index) * power);
                 let y_distort = point.y + (y_distort_field.value_at_index(index) * power);
 
-                Vec2{x: x_distort, y: y_distort}
+                Vec2 {
+                    x: x_distort,
+                    y: y_distort,
+                }
             })
             .collect();
 
@@ -269,7 +272,7 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
                 let y = point.y + 65124.0 / 65536.0;
                 let z = point.z + 31337.0 / 65536.0;
 
-                Vec3{x, y, z}
+                Vec3 { x, y, z }
             })
             .collect();
 
@@ -283,7 +286,7 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
                 let y = point.y + 18128.0 / 65536.0;
                 let z = point.z + 60943.0 / 65536.0;
 
-                Vec3{x, y, z}
+                Vec3 { x, y, z }
             })
             .collect();
 
@@ -297,7 +300,7 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
                 let y = point.y + 11213.0 / 65536.0;
                 let z = point.z + 44845.0 / 65536.0;
 
-                Vec3{x, y, z}
+                Vec3 { x, y, z }
             })
             .collect();
 
@@ -314,7 +317,11 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
                 let y_distort = point.y + (y_distort_field.value_at_index(index) * self.power);
                 let z_distort = point.z + (z_distort_field.value_at_index(index) * self.power);
 
-                Vec3{x: x_distort, y: y_distort, z: z_distort}
+                Vec3 {
+                    x: x_distort,
+                    y: y_distort,
+                    z: z_distort,
+                }
             })
             .collect();
 

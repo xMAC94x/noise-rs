@@ -227,10 +227,10 @@ impl NoiseFieldFn<NoiseField2D> for Billow {
             .coordinates()
             .par_iter()
             .enumerate()
-            .map(|(index, point)| {
+            .map(|(index, &point)| {
                 let mut result = 0.0;
 
-                let mut point = math::mul2(*point, self.frequency);
+                let mut point = point.map(|a| a * self.frequency);
 
                 for x in 0..self.octaves {
                     // Get the signal.
@@ -247,7 +247,7 @@ impl NoiseFieldFn<NoiseField2D> for Billow {
                     result += signal;
 
                     // Increase the frequency for the next octave.
-                    point = math::mul2(point, self.lacunarity);
+                    point = point.map(|a| a * self.lacunarity);
                 }
 
                 // Scale the result to the [-1,1] range.
@@ -279,7 +279,7 @@ impl NoiseFieldFn<NoiseField3D> for Billow {
             .map(|(index, point)| {
                 let mut result = 0.0;
 
-                let mut point = math::mul3(*point, self.frequency);
+                let mut point = point.map(|a| a * self.frequency);
 
                 for x in 0..self.octaves {
                     // Get the signal.
@@ -296,7 +296,7 @@ impl NoiseFieldFn<NoiseField3D> for Billow {
                     result += signal;
 
                     // Increase the frequency for the next octave.
-                    point = math::mul3(point, self.lacunarity);
+                    point = point.map(|a| a * self.lacunarity);
                 }
 
                 // Scale the result to the [-1,1] range.

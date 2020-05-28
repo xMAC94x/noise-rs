@@ -136,8 +136,8 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for CylinderMapBuilder<'a> {
         field = self.source_module.process_field(&field);
         let grid_size = field.size();
 
-        for x in 0..grid_size.0 {
-            for y in 0..grid_size.1 {
+        for x in 0..grid_size[0] {
+            for y in 0..grid_size[1] {
                 result_map.set_value(x, y, field.value_at_point(Vec3 { x, y, z: 0 }));
             }
         }
@@ -380,8 +380,8 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for SphereMapBuilder<'a> {
         field = self.source_module.process_field(&field);
         let grid_size = field.size();
 
-        for x in 0..grid_size.0 {
-            for y in 0..grid_size.1 {
+        for x in 0..grid_size[0] {
+            for y in 0..grid_size[1] {
                 result_map.set_value(x, y, field.value_at_point(Vec3 { x, y, z: 0 }));
             }
         }

@@ -1,10 +1,12 @@
 #[macro_use]
 extern crate criterion;
 extern crate noise;
+extern crate vek;
 
 use criterion::*;
 use noise::noisefield::{NoiseField2D, NoiseField3D};
 use noise::{NoiseFieldFn, NoiseFn, Perlin};
+use vek::Vec2;
 
 criterion_group!(perlin_2d, bench_perlin2d);
 criterion_group!(perlin_3d, bench_perlin3d);
@@ -25,7 +27,8 @@ fn bench_perlin2d(c: &mut Criterion) {
         b.iter(|| {
             for y in 0..height {
                 for x in 0..width {
-                    black_box(perlin.get(field.coord_at_point([x, y])));
+                    let coord = field.coord_at_point(Vec2{x, y});
+                    black_box(perlin.get([coord.x, coord.y]));
                 }
             }
         })
@@ -37,6 +40,12 @@ fn bench_perlin2d(c: &mut Criterion) {
 
     group.bench_function("NoiseField - Parallel", |b| {
         b.iter(|| perlin.process_2d_field_parallel(black_box(&field)))
+    });
+
+    group.bench_function("NoiseField - AutoVec", |b| {
+        let x: Vec<f64> = field.coordinates.iter().map(|point| point.x).collect();
+        let y: Vec<f64> = field.coordinates.iter().map(|point| point.y).collect();
+        b.iter(|| black_box(perlin.perlin_2d_parallel(&x, &y)));
     });
 
     group.finish();
@@ -53,17 +62,17 @@ fn bench_perlin3d(c: &mut Criterion) {
 
     group.throughput(Throughput::Elements((width * height * depth) as u64));
 
-    group.bench_function("Single Points", |b| {
-        b.iter(|| {
-            for z in 0..depth {
-                for y in 0..height {
-                    for x in 0..width {
-                        black_box(perlin.get(field.coord_at_point([x, y, z])));
-                    }
-                }
-            }
-        })
-    });
+    // group.bench_function("Single Points", |b| {
+    //     b.iter(|| {
+    //         for z in 0..depth {
+    //             for y in 0..height {
+    //                 for x in 0..width {
+    //                     black_box(perlin.get(field.coord_at_point([x, y, z])));
+    //                 }
+    //             }
+    //         }
+    //     })
+    // });
 
     group.bench_function("NoiseField - Serial", |b| {
         b.iter(|| perlin.process_3d_field_serial(black_box(&field)))

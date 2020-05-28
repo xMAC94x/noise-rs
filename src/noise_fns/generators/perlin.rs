@@ -7,6 +7,7 @@ use crate::{
     NoiseFieldFn, NoiseFn, Seedable,
 };
 use rayon::prelude::*;
+use vek::{Vec2, Vec3};
 
 /// Noise function that outputs 2/3/4-dimensional Perlin noise.
 #[derive(Clone, Copy, Debug)]
@@ -25,7 +26,7 @@ impl Perlin {
         }
     }
 
-    pub fn perlin_2d(&self, point: Vector2<f64>) -> f64 {
+    pub fn perlin_2d_surflet(&self, point: Vector2<f64>) -> f64 {
         const SCALE_FACTOR: f64 = 3.160_493_827_160_493_7;
 
         #[inline(always)]
@@ -69,7 +70,70 @@ impl Perlin {
         math::clamp((f00 + f10 + f01 + f11) * SCALE_FACTOR, -1.0, 1.0)
     }
 
-    pub fn perlin_2d_lerp(&self, point: Vector2<f64>) -> f64 {
+    pub fn perlin_2d(&self, point: Vec2<f64>) -> f64 {
+        #[inline]
+        fn gradient_dot_v(perm: usize, point: Vec2<f64>) -> f64 {
+            let x = point.x;
+            let y = point.y;
+
+            match perm & 0b11 {
+                0 => x + y,  // ( 1,  1)
+                1 => -x + y, // (-1,  1)
+                2 => x - y,  // ( 1, -1)
+                3 => -x - y, // (-1, -1)
+                _ => unreachable!(),
+            }
+        }
+
+        let floored = point.floor();
+        let near_corner: Vec2<isize> = point.floor().as_();
+        let far_corner = near_corner + Vec2::one();
+        let near_distance = point - floored;
+        let far_distance = near_distance - Vec2::one();
+
+        let u = s_curve5(near_distance.x);
+        let v = s_curve5(near_distance.y);
+
+        let g00 = gradient_dot_v(
+            self.perm_table.get2([near_corner.x, near_corner.y]),
+            near_distance,
+        );
+        let g10 = gradient_dot_v(
+            self.perm_table.get2([far_corner.x, near_corner.y]),
+            Vec2::new(far_distance.x, near_distance.y),
+        );
+        let g01 = gradient_dot_v(
+            self.perm_table.get2([near_corner.x, far_corner.y]),
+            Vec2::new(near_distance.x, far_distance.y),
+        );
+        let g11 = gradient_dot_v(
+            self.perm_table.get2([far_corner.x, far_corner.y]),
+            far_distance,
+        );
+
+        let k0 = g00;
+        let k1 = g10 - g00;
+        let k2 = g01 - g00;
+        let k3 = g00 + g11 - g10 - g01;
+
+        let unscaled_result = k0 + k1 * u + k2 * v + k3 * u * v;
+
+        // Unscaled range of linearly interpolated perlin noise should be (-sqrt(N/4), sqrt(N/4)),
+        // where N is the dimension of the noise.
+        // Need to invert this value and multiply the unscaled result by the value to get a scaled
+        // range of (-1, 1).
+        let scale_factor = (2.0_f64).sqrt(); // 1/sqrt(N/4), N=2 -> 1/sqrt(1/2) -> sqrt(2)
+
+        let scaled_result = unscaled_result * scale_factor;
+
+        // At this point, we should be really close to the (-1, 1) range, but some float errors
+        // could have accumulated, so let's just clamp the results to (-1, 1) to cut off any
+        // outliers and return it.
+        math::clamp(scaled_result, -1.0, 1.0)
+    }
+
+    pub fn perlin_2d_parallel(&self, x: &[f64], y: &[f64]) -> Vec<f64> {
+
         #[inline]
         fn gradient_dot_v(perm: usize, point: [f64; 2]) -> f64 {
             let x = point[0];
@@ -84,48 +148,93 @@ impl Perlin {
             }
         }
 
-        // Unscaled range of linearly interpolated perlin noise should be (-sqrt(N/4), sqrt(N/4)),
-        // where N is the dimension of the noise.
-        // Need to invert this value and multiply the unscaled result by the value to get a scaled
-        // range of (-1, 1).
-        let scale_factor = (2.0_f64).sqrt(); // 1/sqrt(N/4), N=2 -> 1/sqrt(1/2) -> sqrt(2)
+        x.iter().zip(y.iter()).map(|(x, y)| {
 
-        let floored = math::map2(point, f64::floor);
-        let near_corner = math::to_isize2(floored);
-        let far_corner = math::add2(near_corner, [1; 2]);
-        let near_distance = math::sub2(point, floored);
-        let far_distance = math::sub2(near_distance, [1.0; 2]);
+            let floored = [x.floor(), y.floor()];
+            let near_corner = [floored[0] as isize, floored[1] as isize];
+            let far_corner = [near_corner[0] + 1, near_corner[1] + 1];
+            let near_distance = [x - floored[0], y - floored[1]];
+            let far_distance = [near_distance[0] - 1., near_distance[1] - 1.];
 
-        let u = s_curve5(near_distance[0]);
-        let v = s_curve5(near_distance[1]);
+            let u = s_curve5(near_distance[0]);
+            let v = s_curve5(near_distance[1]);
 
-        let a = gradient_dot_v(self.perm_table.get2(near_corner), near_distance);
-        let b = gradient_dot_v(
-            self.perm_table.get2([far_corner[0], near_corner[1]]),
-            [far_distance[0], near_distance[1]],
-        );
-        let c = gradient_dot_v(
-            self.perm_table.get2([near_corner[0], far_corner[1]]),
-            [near_distance[0], far_distance[1]],
-        );
-        let d = gradient_dot_v(self.perm_table.get2(far_corner), far_distance);
+            let g00 = gradient_dot_v(
+                self.perm_table.get2(near_corner),
+                near_distance,
+            );
+            let g10 = gradient_dot_v(
+                self.perm_table.get2([far_corner[0], near_corner[1]]),
+                [far_distance[0], near_distance[1]],
+            );
+            let g01 = gradient_dot_v(
+                self.perm_table.get2([near_corner[0], far_corner[1]]),
+                [near_distance[0], far_distance[1]],
+            );
+            let g11 = gradient_dot_v(
+                self.perm_table.get2(far_corner),
+                far_distance,
+            );
 
-        let k0 = a;
-        let k1 = b - a;
-        let k2 = c - a;
-        let k3 = a + d - b - c;
+            let k0 = g00;
+            let k1 = g10 - g00;
+            let k2 = g01 - g00;
+            let k3 = g00 + g11 - g10 - g01;
 
-        let unscaled_result = k0 + k1 * u + k2 * v + k3 * u * v;
+            let unscaled_result = k0 + k1 * u + k2 * v + k3 * u * v;
 
-        let scaled_result = unscaled_result * scale_factor;
+            // Unscaled range of linearly interpolated perlin noise should be (-sqrt(N/4), sqrt(N/4)),
+            // where N is the dimension of the noise.
+            // Need to invert this value and multiply the unscaled result by the value to get a scaled
+            // range of (-1, 1).
+            let scale_factor = (2.0_f64).sqrt(); // 1/sqrt(N/4), N=2 -> 1/sqrt(1/2) -> sqrt(2)
 
-        // At this point, we should be really damn close to the (-1, 1) range, but some float errors
-        // could have accumulated, so let's just clamp the results to (-1, 1) to cut off any
-        // outliers and return it.
-        math::clamp(scaled_result, -1.0, 1.0)
+            let scaled_result = unscaled_result * scale_factor;
+
+            // At this point, we should be really close to the (-1, 1) range, but some float errors
+            // could have accumulated, so let's just clamp the results to (-1, 1) to cut off any
+            // outliers and return it.
+            math::clamp(scaled_result, -1.0, 1.0)
+        }).collect()
     }
 
-    pub fn perlin_3d(&self, point: Vector3<f64>) -> f64 {
+    pub fn process_2d_field_serial(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = field.clone();
+
+        out.set_values(&self.inner_process_2d_field_serial(field.coordinates()));
+
+        out
+    }
+
+    fn inner_process_2d_field_serial(&self, coordinates: &[Vec2<f64>]) -> Vec<f64> {
+        coordinates
+            .iter()
+            .map(|&point| self.perlin_2d(point))
+            .collect()
+    }
+
+    pub fn process_2d_field_parallel(&self, field: &NoiseField2D) -> NoiseField2D {
+        let mut out = field.clone();
+
+        out.set_values(&self.inner_process_2d_field_parallel_2(field.coordinates()));
+
+        out
+    }
+
+    fn inner_process_2d_field_parallel_2(&self, coordinates: &[Vec2<f64>]) -> Vec<f64> {
+        let x: Vec<f64> = coordinates.iter().map(|point| point.x).collect();
+        let y: Vec<f64> = coordinates.iter().map(|point| point.y).collect();
+        self.perlin_2d_parallel(&x, &y)
+    }
+
+    fn inner_process_2d_field_parallel(&self, coordinates: &[Vec2<f64>]) -> Vec<f64> {
+        coordinates
+            .par_iter()
+            .map(|&point| self.perlin_2d(point))
+            .collect()
+    }
+
+    pub fn perlin_3d(&self, point: Vec3<f64>) -> f64 {
         const SCALE_FACTOR: f64 = 3.889_855_325_553_107_4;
 
         #[inline(always)]
@@ -138,51 +247,51 @@ impl Perlin {
             }
         }
 
-        let floored = math::map3(point, f64::floor);
-        let near_corner = math::to_isize3(floored);
-        let far_corner = math::add3(near_corner, math::one3());
-        let near_distance = math::sub3(point, floored);
-        let far_distance = math::sub3(near_distance, math::one3());
+        let floored = point.map(|a| a.floor());
+        let near_corner = floored.map(|a| a as isize);
+        let far_corner = near_corner + Vec3::one();
+        let near_distance = point - floored;
+        let far_distance = near_distance - Vec3::one();
 
         let f000 = surflet(
             &self.perm_table,
-            [near_corner[0], near_corner[1], near_corner[2]],
-            [near_distance[0], near_distance[1], near_distance[2]],
+            [near_corner.x, near_corner.y, near_corner.z],
+            [near_distance.x, near_distance.y, near_distance.x],
         );
         let f100 = surflet(
             &self.perm_table,
-            [far_corner[0], near_corner[1], near_corner[2]],
-            [far_distance[0], near_distance[1], near_distance[2]],
+            [far_corner.x, near_corner.y, near_corner.z],
+            [far_distance.x, near_distance.y, near_distance.z],
         );
         let f010 = surflet(
             &self.perm_table,
-            [near_corner[0], far_corner[1], near_corner[2]],
-            [near_distance[0], far_distance[1], near_distance[2]],
+            [near_corner.x, far_corner.y, near_corner.z],
+            [near_distance.x, far_distance.y, near_distance.z],
         );
         let f110 = surflet(
             &self.perm_table,
-            [far_corner[0], far_corner[1], near_corner[2]],
-            [far_distance[0], far_distance[1], near_distance[2]],
+            [far_corner.x, far_corner.y, near_corner.z],
+            [far_distance.x, far_distance.y, near_distance.z],
         );
         let f001 = surflet(
             &self.perm_table,
-            [near_corner[0], near_corner[1], far_corner[2]],
-            [near_distance[0], near_distance[1], far_distance[2]],
+            [near_corner.x, near_corner.y, far_corner.z],
+            [near_distance.x, near_distance.y, far_distance.z],
         );
         let f101 = surflet(
             &self.perm_table,
-            [far_corner[0], near_corner[1], far_corner[2]],
-            [far_distance[0], near_distance[1], far_distance[2]],
+            [far_corner.x, near_corner.y, far_corner.z],
+            [far_distance.x, near_distance.y, far_distance.z],
         );
         let f011 = surflet(
             &self.perm_table,
-            [near_corner[0], far_corner[1], far_corner[2]],
-            [near_distance[0], far_distance[1], far_distance[2]],
+            [near_corner.x, far_corner.y, far_corner.z],
+            [near_distance.x, far_distance.y, far_distance.z],
         );
         let f111 = surflet(
             &self.perm_table,
-            [far_corner[0], far_corner[1], far_corner[2]],
-            [far_distance[0], far_distance[1], far_distance[2]],
+            [far_corner.x, far_corner.y, far_corner.z],
+            [far_distance.x, far_distance.y, far_distance.z],
         );
 
         // Multiply by arbitrary value to scale to -1..1
@@ -422,36 +531,6 @@ impl Perlin {
         )
     }
 
-    pub fn process_2d_field_serial(&self, field: &NoiseField2D) -> NoiseField2D {
-        let mut out = field.clone();
-
-        out.set_values(&self.inner_process_2d_field_serial(field.coordinates()));
-
-        out
-    }
-
-    fn inner_process_2d_field_serial(&self, coordinates: &[Vector2<f64>]) -> Vec<f64> {
-        coordinates
-            .iter()
-            .map(|point| self.perlin_2d_lerp(*point))
-            .collect()
-    }
-
-    pub fn process_2d_field_parallel(&self, field: &NoiseField2D) -> NoiseField2D {
-        let mut out = field.clone();
-
-        out.set_values(&self.inner_process_2d_field_parallel(field.coordinates()));
-
-        out
-    }
-
-    fn inner_process_2d_field_parallel(&self, coordinates: &[Vector2<f64>]) -> Vec<f64> {
-        coordinates
-            .par_iter()
-            .map(|point| self.perlin_2d_lerp(*point))
-            .collect()
-    }
-
     pub fn process_3d_field_serial(&self, field: &NoiseField3D) -> NoiseField3D {
         let mut out = field.clone();
 
@@ -460,7 +539,7 @@ impl Perlin {
         out
     }
 
-    fn inner_process_3d_field_serial(&self, coordinates: &[Vector3<f64>]) -> Vec<f64> {
+    fn inner_process_3d_field_serial(&self, coordinates: &[Vec3<f64>]) -> Vec<f64> {
         coordinates
             .iter()
             .map(|point| self.perlin_3d(*point))
@@ -475,10 +554,10 @@ impl Perlin {
         out
     }
 
-    fn inner_process_3d_field_parallel(&self, coordinates: &[Vector3<f64>]) -> Vec<f64> {
+    fn inner_process_3d_field_parallel(&self, coordinates: &[Vec3<f64>]) -> Vec<f64> {
         coordinates
             .par_iter()
-            .map(|point| self.perlin_3d(*point))
+            .map(|&point| self.perlin_3d(point))
             .collect()
     }
 }
@@ -512,14 +591,14 @@ impl Seedable for Perlin {
 /// 2-dimensional perlin noise
 impl NoiseFn<[f64; 2]> for Perlin {
     fn get(&self, point: [f64; 2]) -> f64 {
-        self.perlin_2d(point)
+        self.perlin_2d_surflet(point)
     }
 }
 
 /// 3-dimensional perlin noise
 impl NoiseFn<[f64; 3]> for Perlin {
     fn get(&self, point: [f64; 3]) -> f64 {
-        self.perlin_3d(point)
+        self.perlin_3d(Vec3::new(point[0], point[1], point[2]))
     }
 }
 

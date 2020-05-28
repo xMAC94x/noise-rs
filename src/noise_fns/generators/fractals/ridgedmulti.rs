@@ -321,10 +321,10 @@ impl NoiseFieldFn<NoiseField2D> for RidgedMulti {
             .coordinates()
             .par_iter()
             .enumerate()
-            .map(|(index, point)| {
+            .map(|(index, &point)| {
                 let offset = 1.0;
 
-                let mut point = math::mul2(*point, self.frequency);
+                let mut point = point.map(|a| a * self.frequency);
 
                 // Do first octave
                 let mut signal = fields[0].value_at_index(index);
@@ -342,7 +342,7 @@ impl NoiseFieldFn<NoiseField2D> for RidgedMulti {
 
                 for current_octave in 1..self.octaves {
                     // Increase the frequency.
-                    point = math::mul2(point, self.lacunarity);
+                    point = point.map(|a| a * self.lacunarity);
 
                     // Weight successive contributions by the previous signal.
                     // weight = signal / self.attenuation;
@@ -397,10 +397,10 @@ impl NoiseFieldFn<NoiseField3D> for RidgedMulti {
             .coordinates()
             .par_iter()
             .enumerate()
-            .map(|(index, point)| {
+            .map(|(index, &point)| {
                 let offset = 1.0;
 
-                let mut point = math::mul3(*point, self.frequency);
+                let mut point = point.map(|a| a * self.frequency);
 
                 // Do first octave
                 let mut signal = fields[0].value_at_index(index);
@@ -418,7 +418,7 @@ impl NoiseFieldFn<NoiseField3D> for RidgedMulti {
 
                 for current_octave in 1..self.octaves {
                     // Increase the frequency.
-                    point = math::mul3(point, self.lacunarity);
+                    point = point.map(|a| a * self.lacunarity);
 
                     // Weight successive contributions by the previous signal.
                     // weight = signal / self.attenuation;

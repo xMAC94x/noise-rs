@@ -196,7 +196,7 @@ impl ImageRenderer {
 
     pub fn render_noise_field(&mut self, field: &NoiseField2D) -> Box<NoiseImage> {
         // noise_map.width
-        let [width, height] = field.size().into();
+        let [width, height] = field.size();
 
         let mut destination_image = NoiseImage::new(width, height);
 

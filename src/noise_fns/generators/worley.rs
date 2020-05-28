@@ -542,7 +542,7 @@ impl NoiseFieldFn<NoiseField2D> for Worley {
             .coordinates()
             .iter()
             .map(|point| {
-                let point = &math::mul2(*point, self.frequency);
+                let point = &math::mul2([point.x, point.y], self.frequency);
 
                 let cell = math::map2(*point, f64::floor);
                 let whole = math::to_isize2(cell);

@@ -114,9 +114,9 @@ impl NoiseField2D {
     }
 
     pub fn scale_coordinates(&self, scale: f64) -> Self {
-        let mut out = self.clone();
+        let out = self.clone();
 
-        for coordinate in self.coordinates {
+        for &coordinate in &out.coordinates {
             coordinate.map(|x| x * scale);
         }
 
@@ -255,7 +255,7 @@ impl NoiseField3D {
     pub fn scale_coordinates(&self, scale: f64) -> Self {
         let mut out = self.clone();
 
-        for coordinate in self.coordinates {
+        for &coordinate in &out.coordinates {
             coordinate.map(|x| x * scale);
         }
 
