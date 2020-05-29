@@ -52,11 +52,6 @@ impl NoiseField for NoiseField3D {
 }
 // impl NoiseField for NoiseField4D {}
 
-// pub struct NoiseField1D {
-//     x: Vec<f64>,
-//
-//     values: Vec<f64>,
-
 #[derive(Clone, Debug)]
 pub struct NoiseField2D {
     size: GridSize2D,
@@ -70,7 +65,6 @@ pub struct NoiseField2D {
 }
 
 impl NoiseField2D {
-    // pub fn new(grid_size: (usize, usize), field_size: (f64, f64), field_origin: (f64, f64)) -> Self {
     pub fn new(grid_width: usize, grid_height: usize) -> Self {
         // let (grid_width, grid_height) = grid_size;
 
@@ -98,7 +92,6 @@ impl NoiseField2D {
 
             // field_size,
             // field_origin,
-
             x: vec![0.0; grid_size],
             y: vec![0.0; grid_size],
 
@@ -145,13 +138,8 @@ impl NoiseField2D {
     pub fn scale_coordinates(&self, scale: f64) -> Self {
         let mut out = self.clone();
 
-        out.x = self.x.iter().map(|x| {
-            x * scale
-        }).collect();
-
-        out.y = self.y.iter().map(|a| {
-            a * scale
-        }).collect();
+        out.x = self.x.iter().map(|x| x * scale).collect();
+        out.y = self.y.iter().map(|a| a * scale).collect();
 
         out
     }
@@ -221,7 +209,9 @@ pub struct NoiseField3D {
 
     // field_size: (f64, f64),
     // field_origin: (f64, f64),
-    pub coordinates: Vec<Vec3<f64>>,
+    pub x: Vec<f64>,
+    pub y: Vec<f64>,
+    pub z: Vec<f64>,
 
     pub values: Vec<f64>,
 }
@@ -256,7 +246,9 @@ impl NoiseField3D {
 
             // field_size,
             // field_origin,
-            coordinates: vec![Vec3::zero(); grid_size],
+            x: vec![0.0; grid_size],
+            y: vec![0.0; grid_size],
+            z: vec![0.0; grid_size],
 
             values: vec![0.0; grid_size],
         }
@@ -266,28 +258,51 @@ impl NoiseField3D {
         [self.size.width, self.size.height, self.size.depth]
     }
 
-    pub fn coordinates(&self) -> &Vec<Vec3<f64>> {
-        &self.coordinates
+    pub fn x(&self) -> &Vec<f64> {
+        &self.x
+    }
+
+    pub fn y(&self) -> &Vec<f64> {
+        &self.y
+    }
+
+    pub fn z(&self) -> &Vec<f64> {
+        &self.z
+    }
+
+    pub fn coordinates(&self) -> Vec<Vec3<f64>> {
+        self.x
+            .iter()
+            .zip(self.y.iter())
+            .zip(self.z.iter())
+            .map(|((&x, &y), &z)| Vec3 { x, y, z })
+            .collect()
     }
 
     pub fn coord_at_point(&self, point: Vec3<usize>) -> Vec3<f64> {
         let index = self.index(point);
 
-        self.coordinates[index]
+        Vec3 {
+            x: self.x[index],
+            y: self.y[index],
+            z: self.z[index],
+        }
     }
 
     pub fn set_coord_at_point(&mut self, point: Vec3<usize>, coordinate: Vec3<f64>) {
         let index = self.index(point);
 
-        self.coordinates[index] = coordinate;
+        self.x[index] = coordinate.x;
+        self.y[index] = coordinate.y;
+        self.z[index] = coordinate.z;
     }
 
     pub fn scale_coordinates(&self, scale: f64) -> Self {
         let mut out = self.clone();
 
-        for &coordinate in &out.coordinates {
-            coordinate.map(|x| x * scale);
-        }
+        out.x = self.x.iter().map(|x| x * scale).collect();
+        out.y = self.y.iter().map(|a| a * scale).collect();
+        out.z = self.z.iter().map(|a| a * scale).collect();
 
         out
     }
@@ -352,7 +367,9 @@ impl NoiseField3D {
 
             // field_size: (0.0, 0.0),
             // field_origin: (0.0, 0.0),
-            coordinates: Vec::new(),
+            x: Vec::new(),
+            y: Vec::new(),
+            z: Vec::new(),
 
             values: Vec::new(),
         }
@@ -383,13 +400,13 @@ mod tests {
     #[test]
     #[should_panic]
     fn create_too_small_noisefield2d_x() {
-        let noisefield = NoiseField2D::new(0, 1);
+        let _noisefield = NoiseField2D::new(0, 1);
     }
 
     #[test]
     #[should_panic]
     fn create_too_small_noisefield2d_y() {
-        let noisefield = NoiseField2D::new(1, 0);
+        let _noisefield = NoiseField2D::new(1, 0);
     }
 
     #[test]
@@ -407,6 +424,6 @@ mod tests {
         noisefield.set_coord_at_point(grid_point, coordinate);
         let index = noisefield.index(grid_point);
 
-        assert_eq!(coordinate, noisefield.coordinates[index]);
+        assert_eq!(coordinate, noisefield.coordinates()[index]);
     }
 }

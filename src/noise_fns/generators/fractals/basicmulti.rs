@@ -1,6 +1,6 @@
 use crate::{
     math,
-    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    noisefield::{NoiseField, NoiseField2D},
     MultiFractal, NoiseFieldFn, NoiseFn, Perlin, Seedable,
 };
 use rayon::prelude::*;

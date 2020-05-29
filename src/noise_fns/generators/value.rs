@@ -1,6 +1,6 @@
 use crate::{
     math::{self, interpolate},
-    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    noisefield::NoiseField2D,
     permutationtable::PermutationTable,
     NoiseFieldFn, NoiseFn, Seedable,
 };

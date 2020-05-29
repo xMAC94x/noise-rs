@@ -1,7 +1,7 @@
 use crate::{
     math::{clamp, interpolate},
     noisefield::{NoiseField, NoiseField2D, NoiseField3D},
-    NoiseFieldFn, NoiseFn,
+    NoiseFieldFn,
 };
 
 /// Noise function that maps the output value from the source function onto a

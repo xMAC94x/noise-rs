@@ -1,7 +1,7 @@
 use crate::{
     math,
     noisefield::{NoiseField, NoiseField2D, NoiseField3D},
-    NoiseFieldFn, NoiseFn,
+    NoiseFieldFn,
 };
 
 /// Noise function that clamps the output value from the source function to a

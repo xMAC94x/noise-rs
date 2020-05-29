@@ -1,6 +1,6 @@
 use crate::{
     noisefield::{NoiseField, NoiseField2D, NoiseField3D},
-    NoiseFieldFn, NoiseFn,
+    NoiseFieldFn,
 };
 
 /// Noise function that outputs the product of the two output values from two source

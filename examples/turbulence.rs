@@ -1,11 +1,10 @@
 extern crate noise;
 
-use noise::{utils::*, Checkerboard, Perlin, Turbulence};
+use noise::{utils::*, Checkerboard, Turbulence};
 
 fn main() {
-    let perlin = Perlin::new();
-    let cboard = Checkerboard::new();
-    let turbulence = Turbulence::new(&cboard);
+    let checkerboard = Checkerboard::new();
+    let turbulence = Turbulence::new(&checkerboard);
 
     PlaneMapBuilder::new(&turbulence)
         .build()

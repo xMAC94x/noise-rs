@@ -1,5 +1,5 @@
 use crate::noisefield::{NoiseField, NoiseField2D, NoiseField3D};
-use crate::{math::interpolate, noise_fns::NoiseFn, NoiseFieldFn};
+use crate::{math::interpolate, NoiseFieldFn};
 
 /// Noise function that outputs a weighted blend of the output values from two
 /// source functions given the output value supplied by a control function.

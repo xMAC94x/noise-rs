@@ -1,10 +1,8 @@
 use crate::noisefield::NoiseField;
 use crate::{
     noisefield::{NoiseField2D, NoiseField3D},
-    Fbm, MultiFractal, NoiseFieldFn, NoiseFn, Seedable,
+    Fbm, MultiFractal, NoiseFieldFn, Seedable,
 };
-use rayon::prelude::*;
-use vek::{Vec2, Vec3};
 
 /// Noise function that randomly displaces the input value before returning the
 /// output value from the source function.
@@ -220,13 +218,6 @@ impl<'a> NoiseFieldFn<NoiseField2D> for Turbulence<'a, NoiseField2D> {
     }
 }
 
-fn distort(src: &[f64], field: &dyn NoiseField, power: f64) -> Vec<f64> {
-    src.iter()
-        .enumerate()
-        .map(|(index, &a)| a + field.value_at_index(index) * power)
-        .collect()
-}
-
 impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
     fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
         let mut temp = field.clone();
@@ -236,39 +227,25 @@ impl<'a> NoiseFieldFn<NoiseField3D> for Turbulence<'a, NoiseField3D> {
         // using perlin noise, which returns zero at integer boundaries.
         let mut temp_field = field.clone();
 
-        temp_field.coordinates = field
-            .coordinates()
-            .iter()
-            .map(|point| {
-                let x = point.x + 12414.0 / 65536.0;
-                let y = point.y + 65124.0 / 65536.0;
-                let z = point.z + 31337.0 / 65536.0;
-
-                Vec3 { x, y, z }
-            })
-            .collect();
+        temp_field.x = field.x().iter().map(|&x| x + 12414.0 / 65536.0).collect();
+        temp_field.y = field.y().iter().map(|&y| y + 65124.0 / 65536.0).collect();
+        temp_field.z = field.z().iter().map(|&y| y + 31337.0 / 65536.0).collect();
 
         let x_distort_field = self.x_distort_function.process_field(&temp_field);
         let y_distort_field = self.y_distort_function.process_field(&temp_field);
         let z_distort_field = self.z_distort_function.process_field(&temp_field);
 
-        temp.coordinates = field
-            .coordinates()
-            .iter()
-            .enumerate()
-            .map(|(index, point)| {
-                let x_distort = point.x + (x_distort_field.value_at_index(index) * self.power);
-                let y_distort = point.y + (y_distort_field.value_at_index(index) * self.power);
-                let z_distort = point.z + (z_distort_field.value_at_index(index) * self.power);
-
-                Vec3 {
-                    x: x_distort,
-                    y: y_distort,
-                    z: z_distort,
-                }
-            })
-            .collect();
+        temp.x = distort(&field.x(), &x_distort_field, self.power);
+        temp.y = distort(&field.y(), &y_distort_field, self.power);
+        temp.z = distort(&field.z(), &z_distort_field, self.power);
 
         self.source.process_field(&temp)
     }
+}
+
+fn distort(src: &[f64], field: &dyn NoiseField, power: f64) -> Vec<f64> {
+    src.iter()
+        .enumerate()
+        .map(|(index, &a)| a + field.value_at_index(index) * power)
+        .collect()
 }

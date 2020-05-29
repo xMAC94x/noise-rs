@@ -2,7 +2,6 @@ use crate::{
     noisefield::{NoiseField, NoiseField2D},
     NoiseFieldFn, NoiseFn,
 };
-use vek::Vec2;
 
 /// Noise function that uses multiple source functions to displace each coordinate
 /// of the input value before returning the output value from the `source` function.

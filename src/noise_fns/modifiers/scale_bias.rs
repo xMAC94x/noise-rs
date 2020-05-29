@@ -1,6 +1,6 @@
 use crate::{
     noisefield::{NoiseField, NoiseField2D, NoiseField3D},
-    NoiseFieldFn, NoiseFn,
+    NoiseFieldFn,
 };
 
 /// Noise function that applies a scaling factor and a bias to the output value

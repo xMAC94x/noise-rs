@@ -1,7 +1,4 @@
-use crate::{
-    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
-    NoiseFieldFn, NoiseFn,
-};
+use crate::{noisefield::NoiseField2D, NoiseFieldFn, NoiseFn};
 
 /// Noise function that outputs a checkerboard pattern.
 ///

@@ -1,7 +1,7 @@
 use crate::{
     math::{self, interpolate},
     noisefield::{NoiseField, NoiseField2D, NoiseField3D},
-    NoiseFieldFn, NoiseFn,
+    NoiseFieldFn,
 };
 use rayon::prelude::*;
 

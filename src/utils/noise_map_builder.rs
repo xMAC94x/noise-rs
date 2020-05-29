@@ -121,15 +121,6 @@ impl<'a> NoiseMapBuilder<'a, NoiseField3D> for CylinderMapBuilder<'a> {
                     Vec3 { x, y, z: 0 },
                     Vec3::new(point_x, current_height, point_z),
                 );
-
-                // let value = self.source_module.get([point_x, current_height, point_z]);
-
-                // println!(
-                //     "calculated value {} at {}, {}, {}",
-                //     value, point_x, current_height, point_z
-                // );
-
-                // result_map.set_value(x, y, value);
             }
         }
 
@@ -158,8 +149,8 @@ impl<'a> PlaneMapBuilder<'a> {
     pub fn new(source_module: &'a dyn NoiseFieldFn<NoiseField2D>) -> Self {
         PlaneMapBuilder {
             is_seamless: false,
-            x_bounds: (-2.0, 2.0),
-            y_bounds: (-2.0, 2.0),
+            x_bounds: (-4.0, 4.0),
+            y_bounds: (-4.0, 4.0),
             size: (1000, 1000),
             source_module,
         }

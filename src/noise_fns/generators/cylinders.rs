@@ -1,5 +1,5 @@
 use crate::{
-    noisefield::{NoiseField, NoiseField2D, NoiseField3D},
+    noisefield::{NoiseField2D, NoiseField3D},
     NoiseFieldFn, NoiseFn,
 };
 use rayon::prelude::*;

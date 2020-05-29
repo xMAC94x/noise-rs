@@ -3,8 +3,6 @@ use crate::{
     NoiseFieldFn, NoiseFn,
 };
 
-use vek::{Vec2, Vec3};
-
 /// Noise function that rotates the input value around the origin before
 /// returning the output value from the source function.
 ///
@@ -157,36 +155,18 @@ where
         // z-axis.
         let theta = self.z_angle.to_radians();
 
-        // temp.coordinates = field
-        //     .coordinates()
-        //     .iter()
-        //     .map(|point| {
-        //         let x = point.x * theta.cos() - point.y * theta.sin();
-        //         let y = point.x * theta.sin() + point.y * theta.cos();
-        //
-        //         // set the offset input value instead of the original input value.
-        //         Vec2 { x, y }
-        //     })
-        //     .collect();
-
         temp.x = field
             .x()
             .iter()
             .zip(field.y().iter())
-            .map(|(&x, &y)| {
-                x * theta.cos() - y * theta.sin()
-                // let y = x * theta.sin() + y * theta.cos();
-            })
+            .map(|(&x, &y)| x * theta.cos() - y * theta.sin())
             .collect();
 
         temp.y = field
             .x()
             .iter()
             .zip(field.y().iter())
-            .map(|(&x, &y)| {
-                // x * theta.cos() - y * theta.sin()
-                x * theta.sin() + y * theta.cos()
-            })
+            .map(|(&x, &y)| x * theta.sin() + y * theta.cos())
             .collect();
 
         self.source.process_field(&temp)
@@ -200,8 +180,8 @@ where
     fn process_field(&self, field: &NoiseField3D) -> NoiseField3D {
         let mut temp = field.clone();
 
-        // In two dimensions, the plane is _xy_, and we rotate around the
-        // z-axis.
+        // In three dimensions, we could rotate around any of the x, y, or z
+        // axes. Need a more complicated function to handle this case.
         let x_cos = self.x_angle.to_radians().cos();
         let y_cos = self.y_angle.to_radians().cos();
         let z_cos = self.z_angle.to_radians().cos();
@@ -219,19 +199,35 @@ where
         let y3 = x_sin;
         let z3 = y_cos * x_cos;
 
-        temp.coordinates = field
-            .coordinates()
+        temp.x = field
+            .x()
             .iter()
-            .map(|point| {
+            .zip(field.y().iter())
+            .zip(field.z().iter())
+            .map(|((&x, &y), &z)| (x * x1) + (y * y1) + (z * z1))
+            .collect();
+
+        temp.y = field
+            .x()
+            .iter()
+            .zip(field.y().iter())
+            .zip(field.z().iter())
+            .map(|((&x, &y), &z)| {
                 // In three dimensions, we could rotate around any of the x, y, or z
                 // axes. Need a more complicated function to handle this case.
-                let x = (x1 * point.x) + (y1 * point.y) + (z1 * point.z);
-                let y = (x2 * point.x) + (y2 * point.y) + (z2 * point.z);
-                let z = (x3 * point.x) + (y3 * point.y) + (z3 * point.z);
+                (x * x2) + (y * y2) + (z * z2)
+            })
+            .collect();
 
-                // get the output value using the offset input value instead of the
-                // original input value.
-                Vec3 { x, y, z }
+        temp.z = field
+            .x()
+            .iter()
+            .zip(field.y().iter())
+            .zip(field.z().iter())
+            .map(|((&x, &y), &z)| {
+                // In three dimensions, we could rotate around any of the x, y, or z
+                // axes. Need a more complicated function to handle this case.
+                (x * x3) + (y * y3) + (z * z3)
             })
             .collect();
 
